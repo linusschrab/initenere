@@ -38,6 +38,9 @@ local dd_1 = 0
 local div_dirty = false
 local new_div_div = {time1 = 1, time2 = 1, time3 = 1}
 
+local crow_gate_length = 0.005 --5 ms for 'standard' trig behavior  --clock.get_beat_sec() / 2
+local crow_gate_volts = 5 --5 v (beacuse we don't want to blow any fuses)
+
 
 function init()
 
@@ -53,9 +56,7 @@ function init()
     action = function(x)
       if div_dirty then
         sequences[edit]:set_division(time_div_options[new_div_div[edit]])
-        sequences["time1"].phase = 0
-        sequences["time2"].phase = 0
-        sequences["time3"].phase = 0
+        sequences[edit].phase = time_div_options[new_div_div[edit]] * time_divisions.ppqn * time_divisions.meter
         div_dirty = false
       end
     end,
@@ -67,10 +68,16 @@ function init()
       action = function(x)
         seq_1_pos = seq_1_pos + 1 
         seq_1_pos = util.wrap(seq_1_pos, 1, 4)
+        prev_playnote = playnote
+        --if prev_playnote ~= nil then
+        --  if params:get("seq_1_midi_A") == 2 then
+        --    all_notes_off(prev_playnote, params:get("midi_A"))
+        --  elseif params:get("seq_1_midi_B") == 2 then
+        --    all_notes_off(prev_playnote, params:get("midi_B"))
+        --  end
+        --end
         playnote = music.snap_note_to_array(seq_notes["notes1"][seq_1_pos], scale)
-        engine.noteOn(1, music.note_num_to_freq(playnote),100)
-        m:note_on(playnote,100,1)
-        m:note_off(playnote,100,1)
+        play(1,playnote)
         screen_dirty = true
       end
   },
@@ -79,9 +86,7 @@ function init()
         seq_2_pos = seq_2_pos + 1 
         seq_2_pos = util.wrap(seq_2_pos, 1, 4)
         playnote = music.snap_note_to_array(seq_notes["notes2"][seq_2_pos], scale)
-        engine.noteOn(2, music.note_num_to_freq(playnote),100)
-        m:note_on(playnote,100,1)
-        m:note_off(playnote,100,1)
+        play(2,playnote)
         screen_dirty = true
         end
   },
@@ -90,9 +95,7 @@ function init()
         seq_3_pos = seq_3_pos + 1 
         seq_3_pos = util.wrap(seq_3_pos, 1, 4)
         playnote = music.snap_note_to_array(seq_notes["notes3"][seq_3_pos], scale)
-        engine.noteOn(3, music.note_num_to_freq(playnote),100)
-        m:note_on(playnote,100,1)
-        m:note_off(playnote,100,1)
+        play(3,playnote)
         screen_dirty = true
         end
   }}
@@ -102,12 +105,101 @@ function init()
     sequences["time"..i]:set_division(time_div_options[4 + (i-1)*4])
   end
 
+  
+
+  params:add_group("scale & outputs", 31)
+
+  params:add_separator("scale")
   params:add_option("scale","scale",scales,1)
+  params:add_option("root_note", "root note", music.note_nums_to_names({0,1,2,3,4,5,6,7,8,9,10,11}),1)
+  params:set_action("root_note", function(x)
+    scale = music.generate_scale(x, scales[params:get("scale")], 9)
+  end)
   params:set_action("scale", function(x)
-    scale = music.generate_scale(0, scales[x], 9)
+    scale = music.generate_scale(params:get("root_note"), scales[x], 9)
   end)
 
+  params:add_separator("midi")
+  params:add_number("midi_device", "midi device", 1,4,1)
+  params:set_action("midi_device", function (x) m = midi.connect(x) end)
+  params:add_number("midi_A", "midi ch A", 1,16,1)
+  params:add_number("midi_B", "midi ch B", 1,16,1)
+
+  params:add_separator("seq 1 outputs")
+  params:add_option("seq_1_engine", "seq 1 -> engine", {"no", "yes"}, 2)
+  params:add_option("seq_1_midi_A", "seq 1 -> midi ch A", {"no", "yes"}, 2)
+  params:add_option("seq_1_midi_B", "seq 1 -> midi ch B", {"no", "yes"}, 1)
+  params:add_option("seq_1_crow_1", "seq 1 -> crow 1/2", {"no", "yes"}, 1)
+  params:set_action("seq_1_crow_1", function (x)
+    crow.output[2].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
+  end)
+  params:add_option("seq_1_crow_2", "seq 1 -> crow 3/4", {"no", "yes"}, 1)
+  params:set_action("seq_1_crow_2", function (x)
+    crow.output[4].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
+  end)
+  params:add_option("seq_1_JF", "seq 1 -> JF", {"no", "yes"}, 1)
+  params:set_action("seq_1_JF", function(x)
+    if params:get("seq_2_JF") == 1 or params:get("seq_3_JF") == 1 then
+      if x == 2 then
+        crow.ii.jf.mode(1)
+      else
+        crow.ii.jf.mode(0)
+      end
+    end
+  end)
+  params:add_option("seq_1_w", "seq 1 -> w/syn", {"no", "yes"}, 1)
+
+  params:add_separator("seq 2 outputs")
+  params:add_option("seq_2_engine", "seq 2 -> engine", {"no", "yes"}, 2)
+  params:add_option("seq_2_midi_A", "seq 2 -> midi ch A", {"no", "yes"}, 2)
+  params:add_option("seq_2_midi_B", "seq 2 -> midi ch B", {"no", "yes"}, 1)
+  params:add_option("seq_2_crow_1", "seq 2 -> crow 1/2", {"no", "yes"}, 1)
+  params:set_action("seq_2_crow_1", function (x)
+    crow.output[2].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
+  end)
+  params:add_option("seq_2_crow_2", "seq 2 -> crow 3/4", {"no", "yes"}, 1)
+  params:set_action("seq_2_crow_2", function (x)
+    crow.output[4].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
+  end)
+  params:add_option("seq_2_JF", "seq 2 -> JF", {"no", "yes"}, 1)
+  params:set_action("seq_2_JF", function(x)
+    if params:get("seq_1_JF") == 1 or params:get("seq_3_JF") == 1 then
+      if x == 2 then
+        crow.ii.jf.mode(1)
+      else
+        crow.ii.jf.mode(0)
+      end
+    end
+  end)
+  params:add_option("seq_2_w", "seq 2 -> w/syn", {"no", "yes"}, 1)
+
+  params:add_separator("seq 3 outputs")
+  params:add_option("seq_3_engine", "seq 3 -> engine", {"no", "yes"}, 2)
+  params:add_option("seq_3_midi_A", "seq 3 -> midi ch A", {"no", "yes"}, 2)
+  params:add_option("seq_3_midi_B", "seq 3 -> midi ch B", {"no", "yes"}, 1)
+  params:add_option("seq_3_crow_1", "seq 3 -> crow 1/2", {"no", "yes"}, 1)
+  params:set_action("seq_3_crow_1", function (x)
+    crow.output[2].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
+  end)
+  params:add_option("seq_3_crow_2", "seq 3 -> crow 3/4", {"no", "yes"}, 1)
+  params:set_action("seq_3_crow_2", function (x)
+    crow.output[4].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
+  end)
+  params:add_option("seq_3_JF", "seq 3 -> JF", {"no", "yes"}, 1)
+  params:set_action("seq_3_JF", function(x)
+    if params:get("seq_1_JF") == 1 or params:get("seq_2_JF") == 1 then
+      if x == 2 then
+        crow.ii.jf.mode(1)
+      else
+        crow.ii.jf.mode(0)
+      end
+    end
+  end)
+  params:add_option("seq_3_w", "seq 3 -> w/syn", {"no", "yes"}, 1)
+
+  params:add_group("passersby", 31)
   passersby.add_params()
+  wsyn_add_params()
 
   for i=1,3 do
     params:add_option("time"..i, "s"..i.." division", time_div_names, 4 + (i-1)*4)
@@ -224,6 +316,122 @@ function randomize_notes()
       seq_notes["notes"..i][j] = math.random(24+i*12,36+i*12)
     end
   end
+end
+
+function play(i, playnote)
+  if params:get("seq_"..i.."_engine") == 2 then
+    engine.noteOn(1, music.note_num_to_freq(playnote),100)
+  end
+  if params:get("seq_"..i.."_midi_A") == 2 then
+    m:note_on(playnote,100,params:get("midi_A"))
+    clock.run(midihang, i, playnote, params:get("midi_A"))
+  end
+  if params:get("seq_"..i.."_midi_B") == 2 then
+    m:note_on(playnote,100,params:get("midi_B"))
+    clock.run(midihang, i, playnote, params:get("midi_B"))
+  end
+  if params:get("seq_"..i.."_crow_1") == 2 then
+    crow.output[1].volts = (((playnote)-60)/12)
+    crow.output[2].execute()
+  end
+  if params:get("seq_"..i.."_crow_2") == 2 then
+    crow.output[3].volts = (((playnote)-60)/12)
+    crow.output[4].execute()
+  end
+  if params:get("seq_"..i.."_JF") == 2 then
+    crow.ii.jf.play_note(((playnote)-60)/12,5)
+  end
+  if params:get("seq_"..i.."_w") == 2 then
+    crow.send("ii.wsyn.play_note(".. ((playnote)-60)/12 ..", " .. 5 .. ")")
+  end
+end
+
+function midihang(i, playnote, midi_ch)
+  clock.sleep(time_div_options[params:get("time"..i)]/2)
+  m:note_off(playnote,100,midi_ch)
+end
+
+function wsyn_add_params()
+  params:add_group("w/syn",10)
+  params:add {
+    type = "option",
+    id = "wsyn_ar_mode",
+    name = "AR mode",
+    options = {"off", "on"},
+    default = 2,
+    action = function(val) crow.send("ii.wsyn.ar_mode(" .. (val - 1) .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_curve",
+    name = "Curve",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.curve(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_ramp",
+    name = "Ramp",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.ramp(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_fm_index",
+    name = "FM index",
+    controlspec = controlspec.new(0, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.fm_index(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_fm_env",
+    name = "FM env",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.fm_env(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_fm_ratio_num",
+    name = "FM ratio numerator",
+    controlspec = controlspec.new(1, 20, "lin", 1, 2),
+    action = function(val) crow.send("ii.wsyn.fm_ratio(" .. val .. "," .. params:get("wsyn_fm_ratio_den") .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_fm_ratio_den",
+    name = "FM ratio denominator",
+    controlspec = controlspec.new(1, 20, "lin", 1, 1),
+    action = function(val) crow.send("ii.wsyn.fm_ratio(" .. params:get("wsyn_fm_ratio_num") .. "," .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_lpg_time",
+    name = "LPG time",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.lpg_time(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_lpg_symmetry",
+    name = "LPG symmetry",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.lpg_symmetry(" .. val .. ")") end
+  }
+  params:add{
+    type = "binary",
+    id = "wsyn_randomize",
+    name = "Randomize",
+    action = function()
+      params:set("wsyn_curve", math.random(-50, 50)/10)
+      params:set("wsyn_ramp", math.random(-50, 50)/10)
+      params:set("wsyn_fm_index", math.random(0, 50)/10)
+      params:set("wsyn_fm_env", math.random(-50, 50)/10)
+      params:set("wsyn_fm_ratio_num", math.random(1, 20))
+      params:set("wsyn_fm_ratio_den", math.random(1, 20))
+      params:set("wsyn_lpg_time", math.random(-50, 50)/10)
+      params:set("wsyn_lpg_symmetry", math.random(-50, 50)/10)
+    end
+  }
 end
 
 function cleanup()
