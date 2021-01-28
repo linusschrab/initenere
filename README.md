@@ -1,6 +1,7 @@
 
 # initenere
 note: initenere is motorized by 'lattice' and requires norns 210114 (or later)
+
 install with ```;install https://github.com/linusschrab/initenere```
 
 *a polyrythmic sequencer based on the moog subharmonicon and the 'polyrythm sequencer' for VCV Rack (by Slime Child)*
