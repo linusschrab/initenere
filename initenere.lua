@@ -459,7 +459,7 @@ end
 
 function play(i, playnote)
   if params:get("seq_"..i.."_engine") == 2 then
-    engine.noteOn(1, music.note_num_to_freq(playnote),100)
+    engine.noteOn(i, music.note_num_to_freq(playnote),100)
   end
   if params:get("seq_"..i.."_midi_A") == 2 then
     m:note_on(playnote,100,params:get("midi_A"))
