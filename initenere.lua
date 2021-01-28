@@ -22,7 +22,15 @@ for i=1,16 do
   table.insert(time_div_options, 1/i)
 end
 
-scale = music.generate_scale(0, "major", 9)
+scale = {
+  1,
+  2,
+  3
+}
+scale[1] = music.generate_scale(0, "major", 10)
+scale[2] = music.generate_scale(0, "major", 10)
+scale[3] = music.generate_scale(0, "major", 10)
+
 scales = {}
 
 edit_focus = {
@@ -32,15 +40,28 @@ edit_focus = {
   "notes1",
   "notes2",
   "notes3",
+  "route1",
+  "route2",
+  "route3",
+  "oct1",
+  "oct2",
+  "oct3"
 }
+
 local edit = "time1"
-local dd_1 = 0
+local dd_1 = 1
+local dd_2 = 1
 local div_dirty = false
 local new_div_div = {time1 = 1, time2 = 1, time3 = 1}
+
+local octave_range = {3,3,3}
 
 local crow_gate_length = 0.005 --5 ms for 'standard' trig behavior  --clock.get_beat_sec() / 2
 local crow_gate_volts = 5 --5 v (beacuse we don't want to blow any fuses)
 
+direction = {">", ">", ">"}
+dir_options = {">", "<", "~"}
+current_direction = {1, 1, 1}
 
 function init()
 
@@ -50,74 +71,41 @@ function init()
     table.insert(scales, string.lower(music.SCALES[i].name))
   end
 
-  time_divisions = lattice:new()
+  params:add_group("time routing", 6)
+  params:add_option("time_1_2", "1 -> 2", {"no", "yes"}, 1)
+  params:add_option("time_1_3", "1 -> 3", {"no", "yes"}, 1)
+  params:add_option("time_2_1", "2 -> 1", {"no", "yes"}, 1)
+  params:add_option("time_2_3", "2 -> 3", {"no", "yes"}, 1)
+  params:add_option("time_3_1", "3 -> 1", {"no", "yes"}, 1)
+  params:add_option("time_3_2", "3 -> 2", {"no", "yes"}, 1)
 
-  global_div = time_divisions:new_pattern{
-    action = function(x)
-      if div_dirty then
-        sequences[edit]:set_division(time_div_options[new_div_div[edit]])
-        sequences[edit].phase = time_div_options[new_div_div[edit]] * time_divisions.ppqn * time_divisions.meter
-        div_dirty = false
-      end
-    end,
-    division = 1
-  }
 
-  sequences = {
-  time1 = time_divisions:new_pattern{
-      action = function(x)
-        seq_1_pos = seq_1_pos + 1 
-        seq_1_pos = util.wrap(seq_1_pos, 1, 4)
-        prev_playnote = playnote
-        --if prev_playnote ~= nil then
-        --  if params:get("seq_1_midi_A") == 2 then
-        --    all_notes_off(prev_playnote, params:get("midi_A"))
-        --  elseif params:get("seq_1_midi_B") == 2 then
-        --    all_notes_off(prev_playnote, params:get("midi_B"))
-        --  end
-        --end
-        playnote = music.snap_note_to_array(seq_notes["notes1"][seq_1_pos], scale)
-        play(1,playnote)
-        screen_dirty = true
-      end
-  },
-  time2 = time_divisions:new_pattern{
-      action = function(x) 
-        seq_2_pos = seq_2_pos + 1 
-        seq_2_pos = util.wrap(seq_2_pos, 1, 4)
-        playnote = music.snap_note_to_array(seq_notes["notes2"][seq_2_pos], scale)
-        play(2,playnote)
-        screen_dirty = true
-        end
-  },
-  time3 = time_divisions:new_pattern{
-      action = function(x) 
-        seq_3_pos = seq_3_pos + 1 
-        seq_3_pos = util.wrap(seq_3_pos, 1, 4)
-        playnote = music.snap_note_to_array(seq_notes["notes3"][seq_3_pos], scale)
-        play(3,playnote)
-        screen_dirty = true
-        end
-  }}
-  time_divisions:start()
-
-  for i=1,3 do
-    sequences["time"..i]:set_division(time_div_options[4 + (i-1)*4])
-  end
-
-  
-
-  params:add_group("scale & outputs", 31)
+  params:add_group("scale & outputs", 34)
 
   params:add_separator("scale")
   params:add_option("scale","scale",scales,1)
   params:add_option("root_note", "root note", music.note_nums_to_names({0,1,2,3,4,5,6,7,8,9,10,11}),1)
   params:set_action("root_note", function(x)
-    scale = music.generate_scale(x, scales[params:get("scale")], 9)
+    scale["1"] = music.generate_scale(x+60-params:get("seq_1_oct")*12, scales[params:get("scale")], 2*params:get("seq_1_oct"))
+    scale["2"] = music.generate_scale(x+60-params:get("seq_2_oct")*12, scales[params:get("scale")], 2*params:get("seq_2_oct"))
+    scale["3"] = music.generate_scale(x+60-params:get("seq_3_oct")*12, scales[params:get("scale")], 2*params:get("seq_3_oct"))
   end)
   params:set_action("scale", function(x)
-    scale = music.generate_scale(params:get("root_note"), scales[x], 9)
+    print(params:get("seq_1_oct"))
+    scale["1"] = music.generate_scale(60-params:get("seq_1_oct")*12, scales[params:get("scale")], 2*params:get("seq_1_oct"))
+    scale["2"] = music.generate_scale(60-params:get("seq_2_oct")*12, scales[params:get("scale")], 2*params:get("seq_2_oct"))
+    scale["3"] = music.generate_scale(60-params:get("seq_3_oct")*12, scales[params:get("scale")], 2*params:get("seq_3_oct"))
   end)
+  params:add_option("seq_1_oct", "1. octave range", {"+/- 1","+/- 3","+/- 5"}, 2)
+  params:set_action("seq_1_oct", function(x)
+    scale["1"] = music.generate_scale(60-x*12, scales[params:get("scale")], 2*x) end)
+  params:add_option("seq_2_oct", "2. octave range", {"+/- 1","+/- 3","+/- 5"}, 2)
+  params:set_action("seq_2_oct", function(x)
+    scale["2"] = music.generate_scale(60-x*12, scales[params:get("scale")], 2*x)  end)
+  params:add_option("seq_3_oct", "3. octave range", {"+/- 1","+/- 3","+/- 5"}, 2)
+  params:set_action("seq_3_oct", function(x)
+    scale["3"] = music.generate_scale(60-x*12, scales[params:get("scale")], 2*x)  end)
+
 
   params:add_separator("midi")
   params:add_number("midi_device", "midi device", 1,4,1)
@@ -201,6 +189,72 @@ function init()
   passersby.add_params()
   wsyn_add_params()
 
+  time_divisions = lattice:new()
+
+  global_div = time_divisions:new_pattern{
+    action = function(x)
+      if div_dirty then
+        sequences[edit]:set_division(time_div_options[new_div_div[edit]])
+        sequences[edit].phase = time_div_options[new_div_div[edit]] * time_divisions.ppqn * time_divisions.meter
+        div_dirty = false
+      end
+    end,
+    division = 1
+  }
+
+  sequences = {
+  time1 = time_divisions:new_pattern{
+      action = function(x)
+        if params:get("time_1_2") == 2 then
+          advance_seq_2()
+        end
+        if params:get("time_1_3") == 2 then
+          advance_seq_3()
+        end
+        advance_seq_1()
+        prev_playnote = playnote
+        scaled_note = 60 - (params:get("seq_1_oct")*12) + math.floor((seq_notes["notes1"][seq_1_pos] / 127) * 2*(params:get("seq_1_oct")*12))
+        playnote = music.snap_note_to_array(scaled_note, scale["1"])
+        play(1,playnote)
+        screen_dirty = true
+      end
+  },
+  time2 = time_divisions:new_pattern{
+      action = function(x) 
+        if params:get("time_2_1") == 2 then
+          advance_seq_1()
+        end
+        if params:get("time_2_3") == 2 then
+          advance_seq_3()
+        end
+        advance_seq_2()
+        scaled_note = 60 - (params:get("seq_2_oct")*12) + math.floor((seq_notes["notes2"][seq_2_pos] / 127) * 2*(params:get("seq_2_oct")*12))
+        playnote = music.snap_note_to_array(scaled_note, scale["2"])        
+        play(2,playnote)
+        screen_dirty = true
+        end
+  },
+  time3 = time_divisions:new_pattern{
+      action = function(x) 
+        if params:get("time_3_1") == 2 then
+          advance_seq_1()
+        end
+        if params:get("time_3_2") == 2 then
+          advance_seq_2()
+        end
+        advance_seq_3()
+        scaled_note = 60 - (params:get("seq_3_oct")*12) + math.floor((seq_notes["notes3"][seq_2_pos] / 127) * 2*(params:get("seq_3_oct")*12))
+        playnote = music.snap_note_to_array(scaled_note, scale["3"])
+        play(3,playnote)
+        screen_dirty = true
+        end
+  }}
+  time_divisions:start()
+
+  for i=1,3 do
+    sequences["time"..i]:set_division(time_div_options[4 + (i-1)*4])
+  end
+
   for i=1,3 do
     params:add_option("time"..i, "s"..i.." division", time_div_names, 4 + (i-1)*4)
     params:set_action("time"..i, function(x)
@@ -227,23 +281,49 @@ function key(n,z)
   end
 end
 
+function key(k,z)
+  if z == 1 then
+    --if k == 2 then
+      --edit = edit_focus[dd_1]
+      --dd_1 = 0
+    --elseif k == 3 then
+      --dd_2 = 4
+      --edit = edit_focus[dd_2 + #edit_focus/2]
+    --end
+  end
+end
+
 function enc(n,d)
-  if n == 1 then
-    dd_1 = util.clamp(dd_1+d,1,#edit_focus)
-    edit = edit_focus[dd_1]  
-  end
-  if n == 2 then
-    edit_note_focus = util.wrap(edit_note_focus + d, 1, 4)
-  end
-  if n == 3 then
-    if string.find(edit, "time") then
-      new_div_div[edit] = util.clamp(params:get(edit) + d, 1, #time_div_options)
-      print(time_div_options[new_div_div[edit]])
-      params:set(edit, new_div_div[edit])
-      div_dirty = true
+  if string.find(edit, "time") or string.find(edit, "notes") then
+    if n == 1 then
+      dd_1 = util.clamp(dd_1+d,1,#edit_focus/2)
+      edit = edit_focus[dd_1]  
     end
-    if string.find(edit, "notes") then
-      seq_notes[edit][edit_note_focus] = util.clamp(seq_notes[edit][edit_note_focus] + d, 0, 127)
+    if n == 2 then
+      if string.find(edit, "notes") then
+        edit_note_focus = util.wrap(edit_note_focus + d, 1, 4)
+      elseif string.find(edit, "time") then
+        i = tonumber(string.sub(edit, string.len(edit)))
+        current_direction[i] = util.clamp(current_direction[i] + d, 1, #dir_options)
+        direction[i] = dir_options[current_direction[i]]
+      end
+    end
+    if n == 3 then
+      if string.find(edit, "time") then
+        new_div_div[edit] = util.clamp(params:get(edit) + d, 1, #time_div_options)
+        params:set(edit, new_div_div[edit])
+        div_dirty = true
+        
+      end
+      if string.find(edit, "notes") then
+        seq_notes[edit][edit_note_focus] = util.clamp(seq_notes[edit][edit_note_focus] + d, 0, 127)
+      end
+    end
+  end
+  if string.find(edit, "route") or string.find(edit, "oct") then
+    if n == 1 then
+      dd_2 = util.clamp(dd_2+d,4, 6)
+      edit = edit_focus[dd_2 + #edit_focus/2]
     end
   end
   screen_dirty = true
@@ -251,15 +331,26 @@ end
 
 function redraw()
     screen.clear()
-    screen.level(15)
+    screen.level(2)
     screen.aa(0)
     screen.font_size(8)
     screen.font_face(0)
 
+    screen.level(edit == "route1" and 15 or 2)
+    screen.move(95,8)
+    screen.text(gen_route_string(1))
+    screen.level(edit == "route2" and 15 or 2)
+    screen.move(95,20)
+    screen.text(gen_route_string(2))
+    screen.level(edit == "route3" and 15 or 2)
+    screen.move(95,32)
+    screen.text(gen_route_string(3))
     for i=1,3 do
-      screen.move(50,8 + (i-1)*12)
       screen.level(edit == "time"..i and 15 or 2)
+      screen.move(85, 8 + (i-1)*12)
       screen.text_center(time_div_names[params:get("time"..i)])
+      screen.move(7,8 + (i-1)*12)
+      screen.text_center(direction[i])
     end
 
     for i=1,4 do
@@ -269,51 +360,61 @@ function redraw()
           else
             screen.level(2)
           end
-        screen.move(70 + (i-1)*16,36 + 8+9*(j-1))
+        screen.move(20 + (i-1)*16,36 + 8+9*(j-1))
         screen.text_center(seq_notes["notes"..j][i])
       end
     end
     
     for i=1,4 do
       screen.level(1)
-      screen.rect(64 + (i-1)*16,2,9,9)
+      screen.rect(15 + (i-1)*16,2,9,9)
       screen.fill()
       if i == seq_1_pos then screen.level(15) else screen.level(5) end
-      screen.rect(66 + (i-1)*16,0,9,9)
+      screen.rect(17 + (i-1)*16,0,9,9)
       screen.fill()
     end
     for i=1,4 do
       screen.level(1)
-      screen.rect(64 + (i-1)*16,14,9,9)
+      screen.rect(15 + (i-1)*16,14,9,9)
       screen.fill()
       if i == seq_2_pos then screen.level(15) else screen.level(5) end
-      screen.rect(66 + (i-1)*16,12,9,9)
+      screen.rect(17 + (i-1)*16,12,9,9)
       screen.fill()
     end
     for i=1,4 do
       screen.level(1)
-      screen.rect(64 + (i-1)*16,26,9,9)
+      screen.rect(15 + (i-1)*16,26,9,9)
       screen.fill()
       if i == seq_3_pos then screen.level(15) else screen.level(5) end
-      screen.rect(66 + (i-1)*16,24,9,9)
+      screen.rect(17 + (i-1)*16,24,9,9)
       screen.fill()
     end
 
-    --screen.move(1, 8)
-    --screen.text(params:get("clock_tempo") .. " BPM")
-    --screen.move(1,16)
-    --screen.text("seq_1_pos: " .. seq_1_pos)
-    --screen.move(1,24)
-    --screen.text("seq_2_pos: " .. seq_2_pos)
-    --screen.move(1,32)
-    --screen.text("seq_3_pos: " .. seq_3_pos)
+    --[[screen.level(edit == "oct1" and 15 or 2)
+    screen.move(90, 44)
+    screen.text_center("+/- "..octave_range[1])
+    screen.move(105, 44)
+    screen.text("oct.")
+    screen.level(edit == "oct2" and 15 or 2)
+    screen.move(90, 53)
+    screen.text_center("+/- "..octave_range[2])
+    screen.move(105, 53)
+    screen.text("oct.")
+    screen.level(edit == "oct3" and 15 or 2)
+    screen.move(90, 62)
+    screen.text_center("+/- "..octave_range[3])
+    screen.move(105, 62)
+    screen.text("oct.")
+    ]]
+
     screen.update()
 end
 
 function randomize_notes()
   for i=1,3 do
     for j=1,4 do
-      seq_notes["notes"..i][j] = math.random(24+i*12,36+i*12)
+      --seq_notes["notes"..i][j] = math.random(24+i*12,36+i*12)
+      seq_notes["notes"..i][j] = math.random(0,127)
     end
   end
 end
@@ -434,6 +535,59 @@ function wsyn_add_params()
   }
 end
 
+function advance_seq_1()
+  if direction[1] == ">" then
+    seq_1_pos = seq_1_pos + 1 
+    seq_1_pos = util.wrap(seq_1_pos, 1, 4)
+  elseif direction[1] == "<" then
+    seq_1_pos = seq_1_pos - 1
+    seq_1_pos = util.wrap(seq_1_pos, 1, 4)
+  elseif  direction[1] == "~" then
+    seq_1_pos = math.random(1, 4)
+  end
+end
+
+function advance_seq_2()
+  if direction[2] == ">" then
+    seq_2_pos = seq_2_pos + 1 
+    seq_2_pos = util.wrap(seq_2_pos, 1, 4)
+  elseif direction[2] == "<" then
+    seq_2_pos = seq_2_pos - 1
+    seq_2_pos = util.wrap(seq_2_pos, 1, 4)
+  elseif  direction[2] == "~" then
+    seq_2_pos = math.random(1, 4)
+  end
+end
+
+function advance_seq_3()
+  if direction[3] == ">" then
+    seq_3_pos = seq_3_pos + 1 
+    seq_3_pos = util.wrap(seq_3_pos, 1, 4)
+  elseif direction[3] == "<" then
+    seq_3_pos = seq_3_pos - 1
+    seq_3_pos = util.wrap(seq_3_pos, 1, 4)
+  elseif  direction[3] == "~" then
+    seq_3_pos = math.random(1, 4)
+  end
+end
+
+function gen_route_string(x)
+  to1 = false
+  to2 = false
+  to3 = false
+  to_string = "-> "
+  for i=1,2 do
+    if params:get("time_"..x.."_"..util.wrap(x+i,1,3)) == 2 then
+      to_string = to_string .. util.wrap(x+i,1,3) .. "+"
+    end
+  end
+  return string.sub(to_string, 1, string.len(to_string)-1)
+end
+
 function cleanup()
     time_divisions:destroy()
+end
+
+function rerun()
+  norns.script.load(norns.state.script)
 end
