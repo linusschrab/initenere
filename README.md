@@ -1,5 +1,5 @@
 
-# initenere
+# INITENERE
 note: initenere is motorized by 'lattice' and requires norns 210114 (or later)
 
 install with ```;install https://github.com/linusschrab/initenere```
