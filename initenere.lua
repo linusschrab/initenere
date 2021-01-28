@@ -37,10 +37,13 @@
 -- w/syn - params for w/syn 
 -- (via crow)
 
-music = require("musicutil")
+
+local music = require("musicutil")
+local MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
+engine.name = "MollyThePoly"
+
 lattice = require("lattice")
-engine.name = 'Passersby'
-passersby = include "passersby/lib/passersby_engine"
+
 
 m = midi.connect(1)
 
@@ -223,8 +226,8 @@ function init()
   end)
   params:add_option("seq_3_w", "seq 3 -> w/syn", {"no", "yes"}, 1)
 
-  params:add_group("passersby", 31)
-  passersby.add_params()
+  params:add_group("molly the poly", 46)
+  MollyThePoly.add_params()
   wsyn_add_params()
 
   time_divisions = lattice:new()
@@ -252,7 +255,7 @@ function init()
         advance_seq_1()
         prev_playnote = playnote
         scaled_note = 60 - (params:get("seq_1_oct")*12) + math.floor((seq_notes["notes1"][seq_1_pos] / 127) * 2*(params:get("seq_1_oct")*12))
-        playnote = music.snap_note_to_array(scaled_note, scale["1"])
+        playnote = music.snap_note_to_array(scaled_note, scale[1])
         play(1,playnote)
         screen_dirty = true
       end
@@ -267,7 +270,7 @@ function init()
         end
         advance_seq_2()
         scaled_note = 60 - (params:get("seq_2_oct")*12) + math.floor((seq_notes["notes2"][seq_2_pos] / 127) * 2*(params:get("seq_2_oct")*12))
-        playnote = music.snap_note_to_array(scaled_note, scale["2"])        
+        playnote = music.snap_note_to_array(scaled_note, scale[2])        
         play(2,playnote)
         screen_dirty = true
         end
@@ -282,7 +285,7 @@ function init()
         end
         advance_seq_3()
         scaled_note = 60 - (params:get("seq_3_oct")*12) + math.floor((seq_notes["notes3"][seq_2_pos] / 127) * 2*(params:get("seq_3_oct")*12))
-        playnote = music.snap_note_to_array(scaled_note, scale["3"])
+        playnote = music.snap_note_to_array(scaled_note, scale[3])
         play(3,playnote)
         screen_dirty = true
         end
@@ -460,6 +463,7 @@ end
 function play(i, playnote)
   if params:get("seq_"..i.."_engine") == 2 then
     engine.noteOn(i, music.note_num_to_freq(playnote),100)
+    clock.run(mollyhang, playnote, i)
   end
   if params:get("seq_"..i.."_midi_A") == 2 then
     m:note_on(playnote,100,params:get("midi_A"))
@@ -483,6 +487,11 @@ function play(i, playnote)
   if params:get("seq_"..i.."_w") == 2 then
     crow.send("ii.wsyn.play_note(".. ((playnote)-60)/12 ..", " .. 5 .. ")")
   end
+end
+
+function mollyhang(playnote, i)
+  clock.sleep(time_div_options[params:get("time"..i)]/2)
+  engine.noteOff(playnote)
 end
 
 function midihang(i, playnote, midi_ch)
