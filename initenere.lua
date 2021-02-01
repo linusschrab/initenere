@@ -1,3 +1,51 @@
+-- INITENERE
+-- @vicimity (linus schrab)
+--
+--  /// confining spaces 
+--  of random seeds ///
+--
+-- main screen has eight edit 
+-- positions, navigate with E1.
+--
+-- ~horizontal~
+-- 1-4 manipulates time
+-- E2 - change play directtion 
+-- "-" pause,
+-- ">" forward, 
+-- "<" backward and 
+-- "~" random
+-- E3 - speed up / slow down
+-- 1x -> 16x
+--
+-- ~vertical~~
+-- 5-8 alters to the note matrix
+-- E2 - change play direction
+-- "-" pause,
+-- ">" forward, 
+-- "<" backward and 
+-- "~" random
+-- E3 - speed up / slow down
+-- 1x -> 16x
+-- 
+-- alt. edit w. K3
+-- hold while 1-4
+-- E2: octave offset
+-- E3: octave range
+--
+-- edit -> params
+-- 
+-- midi & outputs
+-- route s1. -> s4.
+--
+-- time routings
+-- interaction of
+-- sequencers
+-- 
+-- scale & notes
+-- 
+-- molly the poly
+-- w/syn
+
 local music = require("musicutil")
 local MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
 engine.name = "MollyThePoly"
@@ -20,8 +68,8 @@ end
 
 oct_modes = {1, 3, 5}
 
-local crow_gate_length = 0.005 --5 ms for 'standard' trig behavior  --clock.get_beat_sec() / 2
-local crow_gate_volts = 5 --5 v (beacuse we don't want to blow any fuses)
+local crow_gate_length = 0.005
+local crow_gate_volts = 5
 
 
 --matrix to hold all note values
@@ -65,22 +113,16 @@ function init()
   m = midi.connect(params:get("midi_device"))
 
   time_handlers = lattice:new()
-  --might need this later to keep new divisions in time
   global_time = time_handlers:new_pattern{
     action = function(x)  
       if time_dirty and #time_dirty_stack > 0 then
         for i=1,#time_dirty_stack do
-          --print(time_dirty_stack[i]["seq"])
-          --i_seq = "seq"..time_dirty_stack[i]["seq"]
-          --sequencers[i_seq]:set_division(time.modes[time_dirty_stack[i]["time"]])
           params:set("time"..time_dirty_stack[i]["seq"], time_dirty_stack[i]["time"])
           if time_dirty_stack[i]["seq"] > 4 then
             sequencers["seq_y"..(time_dirty_stack[i]["seq"] - 4)].phase = 0
           else
             sequencers["seq"..time_dirty_stack[i]["seq"]].phase = 0
           end
-          --print(time.modes[time_dirty_stack[i]["time"]])
-          --matrix[i_seq].division = 
         end
         div_dirty = false
         time_dirty_stack = {}
@@ -207,6 +249,11 @@ function go()
 end
 
 function add_params()
+  params:add_group("load & save", 3)
+  params:add_number("selected_set", "set", 1,100,1)
+  params:add{type = "trigger", id = "load", name = "load", action = loadstate}
+  params:add{type = "trigger", id = "save", name = "save", action = savestate}
+
   params:add_group("midi & outputs",46)
   params:add_separator("midi")
   params:add_number("midi_device", "midi device", 1, #midi.vports, 1)
@@ -362,7 +409,6 @@ function randomize_notes()
     for y=1,4 do
         for x=1,4 do
             matrix[y][x].note = math.random(36,84)
-            --matrix[y][x].note = 60
         end
     end
 end
@@ -449,25 +495,13 @@ function redraw()
       screen.move(35,9+i*10+y_off)
       screen.text(cycle_modes[matrix[i].cycle_dir])
       screen.move(89,8+i*10+y_off)
-      --if matrix[i].cycle_dir ~= 1 then
-        screen.text(time["names"][matrix[i].screen_time])
-        screen.move(100,8+i*10+y_off)
-        screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
-        screen.move(114,8+i*10+y_off)
-        screen.text(" o")
-      --else
-      --  screen.text("-")
-      --  screen.move(100,8+i*10+y_off)
-      --  screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
-      --  screen.move(114,8+i*10+y_off)
-      --  screen.text(" o")
-      --end
+      screen.text(time["names"][matrix[i].screen_time])
+      screen.move(100,8+i*10+y_off)
+      screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
+      screen.move(114,8+i*10+y_off)
+      screen.text(" o")
       screen.text_rotate(35+i*10, 4+y_off,cycle_modes[matrix[i].x_cycle_dir],90)
-      --if matrix[i].x_cycle_dir ~= 1 then
-        screen.text_rotate(35+i*10, 55+y_off, time["names"][matrix[i].screen_y_time], 90)
-      --else
-        --screen.text_rotate(35+i*10, 55+y_off, "-", 90)
-      --end
+      screen.text_rotate(35+i*10, 55+y_off, time["names"][matrix[i].screen_y_time], 90)
       screen.level(edit_foci[edit] == "y_"..i and 15 or 5)
       screen.move(4,8+i*10+y_off)
       screen.text("o "..params:get("seq_"..i.."_off"))
@@ -476,26 +510,14 @@ function redraw()
       screen.move(34,8+i*10+y_off)
       screen.text(cycle_modes[matrix[i].cycle_dir])
       screen.move(88,7+i*10+y_off)
-      --if matrix[i].cycle_dir ~= 1 then
-        screen.text(time["names"][matrix[i].screen_time])
-        screen.move(99,7+i*10+y_off)
-        screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
-        screen.move(113,7+i*10+y_off)
-        screen.text(" o")
-      --else
-      --  screen.text("-")
-      --  screen.move(99,7+i*10+y_off)
-      --  screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
-      --  screen.move(113,7+i*10+y_off)
-      --  screen.text(" o")
-      --end
+      screen.text(time["names"][matrix[i].screen_time])
+      screen.move(99,7+i*10+y_off)
+      screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
+      screen.move(113,7+i*10+y_off)
+      screen.text(" o")
       screen.level(edit_foci[edit] == "x_"..i and 15 or 5)
       screen.text_rotate(34+i*10, 3+y_off,cycle_modes[matrix[i].x_cycle_dir],90)
-      --if matrix[i].x_cycle_dir ~= 1 then
-        screen.text_rotate(34+i*10, 54+y_off, time["names"][matrix[i].screen_y_time], 90)
-      --else
-        --screen.text_rotate(34+i*10, 54+y_off, "-", 90)
-      --end
+      screen.text_rotate(34+i*10, 54+y_off, time["names"][matrix[i].screen_y_time], 90)
     end
     screen.update()
     screen_dirty = false
@@ -516,30 +538,17 @@ function advance_seq(i)
     matrix[i].x_position = math.random(1, 4)
   end
 
-  --prev_playnote = playnote
-  --scaled_note = 60 - (params:get("seq_1_oct")*12) + math.floor((seq_notes["notes1"][seq_1_pos] / 120) * 2*(params:get("seq_1_oct")*12))
-  --playnote = music.snap_note_to_array(scaled_note, scale[1])
   if params:get("seq_"..i.."_oct") == 1 then tmp_off = 48
   elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 24
   elseif params:get("seq_"..i.."_oct") == 3 then tmp_off = 0
   end
 
-
-  n_oct = 2*oct_modes[params:get("seq_"..i.."_oct")]
-  if n_oct == 0 then n_oct = 1 end
-  oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], n_oct)
-  --print("original: "..oct_range[1], oct_range[#oct_range])
+  oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], 2*oct_modes[params:get("seq_"..i.."_oct")])
   scaled_oct_range = {}
   for j=1,#oct_range do
     scaled_oct_range[j] = oct_range[j] + tmp_off + (12 * params:get("seq_"..i.."_off"))
-    --print(scaled_oct_range[j])
   end
-  --print("scaled: "..scaled_oct_range[1], scaled_oct_range[#scaled_oct_range])
-  --playnote = scale(matrix[i][matrix[i].x_position].note + (12 * params:get("seq_"..i.."_off")), 1, 120, scaled_oct_range[1], scaled_oct_range[#scaled_oct_range])
   playnote = music.snap_note_to_array(matrix[i][matrix[i].x_position].note+ (12 * params:get("seq_"..i.."_off")), scaled_oct_range)
-  --playnote = playnote
-  --print(music.note_num_to_name(playnote,true))
-  --print(playnote)
 end
 
 function rotate(x)
@@ -616,13 +625,66 @@ function play(i, playnote)
     end
   end
   
-  function mollyhang(note,i)
-    --print(time.modes[params:get("time"..i)]/2)
-    clock.sleep(time.modes[params:get("time"..i)]/2)
-    engine.noteOff(note)
+function mollyhang(note,i)
+  clock.sleep(time.modes[params:get("time"..i)]/2)
+  engine.noteOff(note)
+end
+
+function midihang(i, playnote, midi_ch)
+  clock.sleep(time.modes[params:get("time"..i)]/2)
+  m:note_off(playnote,100,midi_ch)
+end
+
+function savestate()
+  local file = io.open(_path.data .. "initenere/initenere-pattern"..params:get("selected_set")..".data", "w+")
+  io.output(file)
+  io.write("initenere".."\n")
+  for y=1,4 do
+    io.write(matrix[y].x_position .. "\n")
+    io.write(matrix[y].row  .. "\n")
+    io.write(matrix[y].cycle_dir .. "\n")
+    io.write(matrix[y].octave_range .. "\n")
+    io.write(matrix[y].x_cycle_dir  .. "\n")
+    io.write(matrix[y].screen_time  .. "\n")
+    io.write(matrix[y].screen_y_time  .. "\n")
+    for x=1,4 do
+      io.write(matrix[y][x].note .. "\n")
+    end
   end
-  
-  function midihang(i, playnote, midi_ch)
-    clock.sleep(time.modes[params:get("time"..i)]/2)
-    m:note_off(playnote,100,midi_ch)
+  io.close(file)
+  params:write(_path.data .. "initenere/initenere-0"..params:get("selected_set"))
+end
+
+function loadstate()
+  local file = io.open(_path.data .. "initenere/initenere-pattern"..params:get("selected_set")..".data", "r")
+  if file then
+    io.input(file)
+    filetype = io.read()
+    if filetype == "initenere" then
+
+      for y=1,4 do
+        matrix[y].x_position = tonumber(io.read())
+        matrix[y].row = tonumber(io.read())
+        matrix[y].cycle_dir = tonumber(io.read())
+        matrix[y].octave_range = tonumber(io.read())
+        matrix[y].x_cycle_dir = tonumber(io.read())
+        matrix[y].screen_time = tonumber(io.read())
+        matrix[y].screen_y_time = tonumber(io.read())
+        for x=1,4 do
+            matrix[y][x].note = tonumber(io.read())
+        end
+    end
+    
+      params:read(_path.data .. "initenere/initenere-0"..params:get("selected_set"))
+      params:bang()
+    else
+      print("invalid data file")
+    end
+    io.close(file)
+    grid_dirty = true
   end
+end
+
+function rerun()
+  norns.script.load(norns.state.script)
+end
