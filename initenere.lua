@@ -516,20 +516,20 @@ function play(i, playnote)
       clock.run(mollyhang, playnote,i)
     end
     if params:get("seq_"..i.."_midi_A") == 2 then
-      m:note_on(playnote,100,params:get("midi_A"))
-      clock.run(midihang, i, playnote, params:get("midi_A"))
+      m:note_on(playnote,100,params:get("midi_channel_A"))
+      clock.run(midihang, i, playnote, params:get("midi_channel_A"))
     end
     if params:get("seq_"..i.."_midi_B") == 2 then
-      m:note_on(playnote,100,params:get("midi_B"))
-      clock.run(midihang, i, playnote, params:get("midi_B"))
+      m:note_on(playnote,100,params:get("midi_channel_B"))
+      clock.run(midihang, i, playnote, params:get("midi_channel_B"))
     end
     if params:get("seq_"..i.."_midi_C") == 2 then
-      m:note_on(playnote,100,params:get("midi_A"))
-      clock.run(midihang, i, playnote, params:get("midi_A"))
+      m:note_on(playnote,100,params:get("midi_channel_C"))
+      clock.run(midihang, i, playnote, params:get("midi_channel_C"))
     end
     if params:get("seq_"..i.."_midi_D") == 2 then
-      m:note_on(playnote,100,params:get("midi_B"))
-      clock.run(midihang, i, playnote, params:get("midi_B"))
+      m:note_on(playnote,100,params:get("midi_channel_D"))
+      clock.run(midihang, i, playnote, params:get("midi_channel_D"))
     end
     if params:get("seq_"..i.."_crow_1") == 2 then
       crow.output[1].volts = (((playnote)-60)/12)
