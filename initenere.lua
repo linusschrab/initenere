@@ -180,8 +180,8 @@ function init()
         end
         if matrix[4].cycle_dir ~= 1 then
           play(4,playnote)
-        end        s
-        creen_dirty = true
+        end
+        screen_dirty = true
       end,
       division = time["modes"][matrix[4].time]
     },
