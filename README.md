@@ -1,17 +1,55 @@
+## INITENERE
 
-# INITENERE
-note: initenere is motorized by 'lattice' and requires norns 210114 (or later)
+![enter image description here](https://www.getgometro.com/wp-content/uploads/2017/01/traffic-congestion-sa-474927869.jpg)
 
-install with ```;install https://github.com/linusschrab/initenere```
+/// Confining spaces of random seeds. ///
 
-random seeds, limits of rules.
+2-dimensional polyrythmic, random note sequencer.
 
-*a 4x4 polyrythmic sequencer inspired by the moog subharmonicon*
+### Requirements
 
-4 columns run in various directions (E2) and at individual speeds (E3)
-a matrix of 16 randomly seeded notes where each row has a push sequencer with individual speed (E2) and direction (E3)
-navigate the columns/rows with E1.
-as a side dish octave offset (left) and octave range (right) can be altered for the individual rows with K3 + E2 (left) / E3 (right)
-params are there.
+Norns 210114
 
-lot's of work to do but it's working and (i hope) stable for basic navigation.
+![enter image description here](https://llllllll.co/uploads/default/original/3X/9/7/97471bc175bf2f475336a91f80d16985731f9c52.png)
+
+
+### Documentation
+At startup a random seed of 4x4 notes are generated, these can be re-seeded in params.
+
+The screen has eight edit positions. Navigate with E1.
+
+**Horizontally** 1-4 selects four separate rows of sequencers. These trigger notes and move in one of three ways. Edit with E2.
+`>` forward
+`<` backward
+`~` random
+`-` halt movement
+
+E3 alters time from 1x to 16x (16 is faster).
+
+K3 (hold) enables alt-edit.
+
+`o -3 to 3` Sequenced notes octave offset (edit with K3+E2)
+`1, 3 and 5 o` Sequenced notes octave range (edit with K3+E3)
+
+**Vertically** there are four sequencers with their own individual direction and speed (same instructions as above E2 = direction and E3 = time).
+
+Parameters > Edit
+**Load & Save** 
+set 1-100 (including params)
+**Midi & Outputs**
+Choose midi settings and sequencer routings
+**Time Routings**
+Route sequencer time to closest neighbor
+**Scale & Notes**
+Choose scale and root note
+Parameters for octave offsets and ranges.
+Seed new random note matrix
+**Molly the Poly**
+**w/syn**
+Edit synth stuff...
+
+
+### Install
+
+In Matron: `;install https://github.com/linusschrab/initenere`
+https://github.com/linusschrab/initenere
