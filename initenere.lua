@@ -71,9 +71,14 @@ function init()
       if time_dirty and #time_dirty_stack > 0 then
         for i=1,#time_dirty_stack do
           --print(time_dirty_stack[i]["seq"])
-          i_seq = "seq"..time_dirty_stack[i]["seq"]
+          --i_seq = "seq"..time_dirty_stack[i]["seq"]
           --sequencers[i_seq]:set_division(time.modes[time_dirty_stack[i]["time"]])
           params:set("time"..time_dirty_stack[i]["seq"], time_dirty_stack[i]["time"])
+          if time_dirty_stack[i]["seq"] > 4 then
+            sequencers["seq_y"..(time_dirty_stack[i]["seq"] - 4)].phase = 0
+          else
+            sequencers["seq"..time_dirty_stack[i]["seq"]].phase = 0
+          end
           --print(time.modes[time_dirty_stack[i]["time"]])
           --matrix[i_seq].division = 
         end
@@ -88,6 +93,12 @@ function init()
     seq1 = time_handlers:new_pattern{
       action = function(x)
         advance_seq(1)
+        if params:get("time_1_2") == 2 then
+          advance_seq(2)
+        end
+        if matrix[1].cycle_dir ~= 1 then
+          play(1,playnote)
+        end
         screen_dirty = true
       end,
       division = time["modes"][matrix[1].time]
@@ -95,21 +106,36 @@ function init()
     seq2 = time_handlers:new_pattern{
       action = function(x)
         advance_seq(2)
-        screen_dirty = true
+        if params:get("time_2_3") == 2 then
+          advance_seq(3)
+        end
+        if matrix[2].cycle_dir ~= 1 then
+          play(2,playnote)
+        end        screen_dirty = true
       end,
       division = time["modes"][matrix[2].time]
     },
     seq3 = time_handlers:new_pattern{
       action = function(x)
         advance_seq(3)
-        screen_dirty = true
+        if params:get("time_3_4") == 2 then
+          advance_seq(4)
+        end
+        if matrix[3].cycle_dir ~= 1 then
+          play(3,playnote)
+        end        screen_dirty = true
       end,
       division = time["modes"][matrix[3].time]
     },
     seq4 = time_handlers:new_pattern{
       action = function(x)
         advance_seq(4)
-        screen_dirty = true
+        if params:get("time_4_1") == 2 then
+          advance_seq(1)
+        end
+        if matrix[4].cycle_dir ~= 1 then
+          play(4,playnote)
+        end        screen_dirty = true
       end,
       division = time["modes"][matrix[4].time]
     },
@@ -215,6 +241,14 @@ function add_params()
     end)
     params:add_option("seq_"..i.."_w", "seq "..i.." -> w/syn", {"no", "yes"}, 1)
   end
+
+  params:add_group("time routings", 5)
+  params:add_separator("route time to neighbors")
+  params:add_option("time_1_2", "s1. -> s2.", {"no", "yes"}, 1)
+  params:add_option("time_2_3", "s2. -> s3.", {"no", "yes"}, 1)
+  params:add_option("time_3_4", "s3. -> s4.", {"no", "yes"}, 1)
+  params:add_option("time_4_1", "s4. -> s1.", {"no", "yes"}, 1)
+    
 
   params:add_group("scale & notes",14)
   params:add_separator("scale")
@@ -397,14 +431,14 @@ function redraw()
         end
     end
     
-    --[[ for testing purposes
+    -- for testing purposes
     for y=1,4 do
       for x=1,4 do
         screen.move(x*10,y*10)
         screen.text(matrix[y][x].note)
       end
     end
-    ]]
+    
 
     for i=1,4 do
       screen.level(1)
@@ -506,32 +540,42 @@ function advance_seq(i)
   --playnote = playnote
   --print(music.note_num_to_name(playnote,true))
   --print(playnote)
-  play(i,playnote)
-end
-
-function scale(x, oldmin, oldmax, newmin, newmax)
-  oldrange = (oldmax - oldmin)  
-  newrange = (newmax - newmin)  
-  return math.floor((((x - oldmin) * newrange) / oldrange) + newmin)
 end
 
 function rotate(x)
-  for y=1,4 do
-    tmp_note = matrix[y][x]
-    if matrix[y].x_cycle_dir == 1 then
-      --
-    elseif cycle_modes[matrix[y].x_cycle_dir] == ">" then
-      matrix[y][x] = matrix[util.wrap(y+1,1,4)][x]
-      matrix[util.wrap(y+1,1,4)][x] = tmp_note
-    elseif cycle_modes[matrix[y].x_cycle_dir] == "<" then
-      matrix[y][x] = matrix[util.wrap(y-1,1,4)][x]
-      matrix[util.wrap(y-1,1,4)][x] = tmp_note
-    elseif cycle_modes[matrix[y].x_cycle_dir] == "~" then
-      tmp_rnd = math.random(1,4)
-      matrix[y][x] = matrix[tmp_rnd][x]
-      matrix[tmp_rnd][x] = tmp_note
-    end
+      if cycle_modes[matrix[x].x_cycle_dir] == ">" then
+        tmp_note = matrix[x][1].note
+        for i=1,4 do
+          lcl_tmp = matrix[util.wrap(i+1,1,4)][x].note
+          matrix[util.wrap(i+1,1,4)][x].note = tmp_note
+          tmp_note = lcl_tmp
+        end
+      elseif cycle_modes[matrix[x].x_cycle_dir] == "<" then
+        tmp_note = matrix[x][1].note
+        for i=1,4 do
+          lcl_tmp = matrix[util.wrap(1-i,1,4)][x].note
+          matrix[util.wrap(1-i,1,4)][x].note = tmp_note
+          tmp_note = lcl_tmp
+        end
+      elseif cycle_modes[matrix[x].x_cycle_dir] == "~" then
+        tmp_notes = {}
+        for i=1, 4 do
+          table.insert(tmp_notes, matrix[i][x].note)
+        end
+        tmp_notes = shuffle(tmp_notes)
+        for i=1, 4 do
+          matrix[i][x].note = tmp_notes[i]
+        end
+      end
+      screen_dirty = true
+end
+
+function shuffle(tbl)
+  for i = #tbl, 2, -1 do
+    local j = math.random(i)
+    tbl[i], tbl[j] = tbl[j], tbl[i]
   end
+  return tbl
 end
 
 function play(i, playnote)
