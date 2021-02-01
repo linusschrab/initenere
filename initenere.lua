@@ -154,7 +154,8 @@ function init()
         end
         if matrix[2].cycle_dir ~= 1 then
           play(2,playnote)
-        end        screen_dirty = true
+        end        
+        screen_dirty = true
       end,
       division = time["modes"][matrix[2].time]
     },
@@ -166,7 +167,8 @@ function init()
         end
         if matrix[3].cycle_dir ~= 1 then
           play(3,playnote)
-        end        screen_dirty = true
+        end        
+        screen_dirty = true
       end,
       division = time["modes"][matrix[3].time]
     },
@@ -178,7 +180,8 @@ function init()
         end
         if matrix[4].cycle_dir ~= 1 then
           play(4,playnote)
-        end        screen_dirty = true
+        end        s
+        creen_dirty = true
       end,
       division = time["modes"][matrix[4].time]
     },
@@ -273,7 +276,7 @@ function add_params()
     params:set_action("seq_"..i.."_crow_1", function (x)
       crow.output[2].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
     end)
-    params:add_option("seq_"..i.."_crow_2", "seq 1 -> crow 3/4", {"no", "yes"}, 1)
+    params:add_option("seq_"..i.."_crow_2", "seq "..i.." -> crow 3/4", {"no", "yes"}, 1)
     params:set_action("seq_"..i.."_crow_2", function (x)
       crow.output[4].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
     end)
@@ -538,18 +541,6 @@ function advance_seq(i)
   elseif  cycle_modes[matrix[i].cycle_dir] == "~" then
     matrix[i].x_position = math.random(1, 4)
   end
-
-  if params:get("seq_"..i.."_oct") == 1 then tmp_off = 48
-  elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 24
-  elseif params:get("seq_"..i.."_oct") == 3 then tmp_off = 0
-  end
-
-  oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], 2*oct_modes[params:get("seq_"..i.."_oct")])
-  scaled_oct_range = {}
-  for j=1,#oct_range do
-    scaled_oct_range[j] = oct_range[j] + tmp_off + (12 * params:get("seq_"..i.."_off"))
-  end
-  playnote = music.snap_note_to_array(matrix[i][matrix[i].x_position].note+ (12 * params:get("seq_"..i.."_off")), scaled_oct_range)
 end
 
 function rotate(x)
@@ -589,6 +580,18 @@ function shuffle(tbl)
 end
 
 function play(i, playnote)
+
+  if params:get("seq_"..i.."_oct") == 1 then tmp_off = 48
+  elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 24
+  elseif params:get("seq_"..i.."_oct") == 3 then tmp_off = 0
+  end
+
+  oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], 2*oct_modes[params:get("seq_"..i.."_oct")])
+  scaled_oct_range = {}
+  for j=1,#oct_range do
+    scaled_oct_range[j] = oct_range[j] + tmp_off + (12 * params:get("seq_"..i.."_off"))
+  end
+  playnote = music.snap_note_to_array(matrix[i][matrix[i].x_position].note+ (12 * params:get("seq_"..i.."_off")), scaled_oct_range)
   
     if params:get("seq_"..i.."_engine") == 2 then
       engine.noteOn(playnote, music.note_num_to_freq(playnote),100)
