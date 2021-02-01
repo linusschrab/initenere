@@ -139,9 +139,6 @@ function init()
         if params:get("time_1_2") == 2 then
           advance_seq(2)
         end
-        if matrix[1].cycle_dir ~= 1 then
-          play(1,playnote)
-        end
         screen_dirty = true
       end,
       division = time["modes"][matrix[1].time]
@@ -151,10 +148,7 @@ function init()
         advance_seq(2)
         if params:get("time_2_3") == 2 then
           advance_seq(3)
-        end
-        if matrix[2].cycle_dir ~= 1 then
-          play(2,playnote)
-        end        
+        end  
         screen_dirty = true
       end,
       division = time["modes"][matrix[2].time]
@@ -164,10 +158,7 @@ function init()
         advance_seq(3)
         if params:get("time_3_4") == 2 then
           advance_seq(4)
-        end
-        if matrix[3].cycle_dir ~= 1 then
-          play(3,playnote)
-        end        
+        end       
         screen_dirty = true
       end,
       division = time["modes"][matrix[3].time]
@@ -177,9 +168,6 @@ function init()
         advance_seq(4)
         if params:get("time_4_1") == 2 then
           advance_seq(1)
-        end
-        if matrix[4].cycle_dir ~= 1 then
-          play(4,playnote)
         end
         screen_dirty = true
       end,
@@ -541,6 +529,7 @@ function advance_seq(i)
   elseif  cycle_modes[matrix[i].cycle_dir] == "~" then
     matrix[i].x_position = math.random(1, 4)
   end
+  play(i)
 end
 
 function rotate(x)
@@ -579,7 +568,7 @@ function shuffle(tbl)
   return tbl
 end
 
-function play(i, playnote)
+function play(i)
 
   if params:get("seq_"..i.."_oct") == 1 then tmp_off = 48
   elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 24
