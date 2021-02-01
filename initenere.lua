@@ -327,7 +327,8 @@ end
 function randomize_notes()
     for y=1,4 do
         for x=1,4 do
-            matrix[y][x].note = math.random(120) -- +/- 5 octave range
+            matrix[y][x].note = math.random(36,84)
+            --matrix[y][x].note = 60
         end
     end
 end
@@ -351,7 +352,7 @@ function enc(e,d)
         matrix[edit].screen_time = util.clamp(matrix[edit].screen_time + d, 1, #time.modes)
         table.insert(time_dirty_stack, {seq=edit, time=matrix[edit].screen_time}) -- HERE
         time_dirty = true
-      elseif matrix[edit-4].x_cycle_dir ~= 1 then
+      else --if matrix[edit-4].x_cycle_dir ~= 1 then
         matrix[edit-4].screen_y_time = util.clamp(matrix[edit-4].screen_y_time + d, 1, #time.modes)
         table.insert(time_dirty_stack, {seq=edit, time = util.clamp(matrix[edit-4].screen_y_time, 1, #time.modes)})
         time_dirty = true
@@ -414,25 +415,25 @@ function redraw()
       screen.move(35,9+i*10+y_off)
       screen.text(cycle_modes[matrix[i].cycle_dir])
       screen.move(89,8+i*10+y_off)
-      if matrix[i].cycle_dir ~= 1 then
+      --if matrix[i].cycle_dir ~= 1 then
         screen.text(time["names"][matrix[i].screen_time])
         screen.move(100,8+i*10+y_off)
         screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
         screen.move(114,8+i*10+y_off)
         screen.text(" o")
-      else
-        screen.text("-")
-        screen.move(100,8+i*10+y_off)
-        screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
-        screen.move(114,8+i*10+y_off)
-        screen.text(" o")
-      end
+      --else
+      --  screen.text("-")
+      --  screen.move(100,8+i*10+y_off)
+      --  screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
+      --  screen.move(114,8+i*10+y_off)
+      --  screen.text(" o")
+      --end
       screen.text_rotate(35+i*10, 4+y_off,cycle_modes[matrix[i].x_cycle_dir],90)
-      if matrix[i].x_cycle_dir ~= 1 then
+      --if matrix[i].x_cycle_dir ~= 1 then
         screen.text_rotate(35+i*10, 55+y_off, time["names"][matrix[i].screen_y_time], 90)
-      else
-        screen.text_rotate(35+i*10, 55+y_off, "-", 90)
-      end
+      --else
+        --screen.text_rotate(35+i*10, 55+y_off, "-", 90)
+      --end
       screen.level(edit_foci[edit] == "y_"..i and 15 or 5)
       screen.move(4,8+i*10+y_off)
       screen.text("o "..params:get("seq_"..i.."_off"))
@@ -441,26 +442,26 @@ function redraw()
       screen.move(34,8+i*10+y_off)
       screen.text(cycle_modes[matrix[i].cycle_dir])
       screen.move(88,7+i*10+y_off)
-      if matrix[i].cycle_dir ~= 1 then
+      --if matrix[i].cycle_dir ~= 1 then
         screen.text(time["names"][matrix[i].screen_time])
         screen.move(99,7+i*10+y_off)
         screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
         screen.move(113,7+i*10+y_off)
         screen.text(" o")
-      else
-        screen.text("-")
-        screen.move(99,7+i*10+y_off)
-        screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
-        screen.move(113,7+i*10+y_off)
-        screen.text(" o")
-      end
+      --else
+      --  screen.text("-")
+      --  screen.move(99,7+i*10+y_off)
+      --  screen.text(" | "..oct_modes[params:get("seq_"..i.."_oct")])
+      --  screen.move(113,7+i*10+y_off)
+      --  screen.text(" o")
+      --end
       screen.level(edit_foci[edit] == "x_"..i and 15 or 5)
       screen.text_rotate(34+i*10, 3+y_off,cycle_modes[matrix[i].x_cycle_dir],90)
-      if matrix[i].x_cycle_dir ~= 1 then
+      --if matrix[i].x_cycle_dir ~= 1 then
         screen.text_rotate(34+i*10, 54+y_off, time["names"][matrix[i].screen_y_time], 90)
-      else
-        screen.text_rotate(34+i*10, 54+y_off, "-", 90)
-      end
+      --else
+        --screen.text_rotate(34+i*10, 54+y_off, "-", 90)
+      --end
     end
     screen.update()
     screen_dirty = false
@@ -484,10 +485,34 @@ function advance_seq(i)
   --prev_playnote = playnote
   --scaled_note = 60 - (params:get("seq_1_oct")*12) + math.floor((seq_notes["notes1"][seq_1_pos] / 120) * 2*(params:get("seq_1_oct")*12))
   --playnote = music.snap_note_to_array(scaled_note, scale[1])
-  playnote = music.snap_note_to_array(matrix[i][matrix[i].x_position].note, music.generate_scale(params:get("root_note"), scales[params:get("scale")], 2*oct_modes[params:get("seq_"..i.."_oct")]))
-  playnote = playnote + params:get("seq_"..i.."_off") * 12
+  if params:get("seq_"..i.."_oct") == 1 then tmp_off = 48
+  elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 24
+  elseif params:get("seq_"..i.."_oct") == 3 then tmp_off = 0
+  end
+
+
+  n_oct = 2*oct_modes[params:get("seq_"..i.."_oct")]
+  if n_oct == 0 then n_oct = 1 end
+  oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], n_oct)
+  --print("original: "..oct_range[1], oct_range[#oct_range])
+  scaled_oct_range = {}
+  for j=1,#oct_range do
+    scaled_oct_range[j] = oct_range[j] + tmp_off + (12 * params:get("seq_"..i.."_off"))
+    --print(scaled_oct_range[j])
+  end
+  --print("scaled: "..scaled_oct_range[1], scaled_oct_range[#scaled_oct_range])
+  --playnote = scale(matrix[i][matrix[i].x_position].note + (12 * params:get("seq_"..i.."_off")), 1, 120, scaled_oct_range[1], scaled_oct_range[#scaled_oct_range])
+  playnote = music.snap_note_to_array(matrix[i][matrix[i].x_position].note+ (12 * params:get("seq_"..i.."_off")), scaled_oct_range)
+  --playnote = playnote
+  --print(music.note_num_to_name(playnote,true))
   --print(playnote)
   play(i,playnote)
+end
+
+function scale(x, oldmin, oldmax, newmin, newmax)
+  oldrange = (oldmax - oldmin)  
+  newrange = (newmax - newmin)  
+  return math.floor((((x - oldmin) * newrange) / oldrange) + newmin)
 end
 
 function rotate(x)
