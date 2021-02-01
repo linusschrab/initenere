@@ -432,12 +432,12 @@ function redraw()
     end
     
     -- for testing purposes
-    for y=1,4 do
-      for x=1,4 do
-        screen.move(x*10,y*10)
-        screen.text(matrix[y][x].note)
-      end
-    end
+    --for y=1,4 do
+    --  for x=1,4 do
+    --    screen.move(x*10,y*10)
+    --    screen.text(matrix[y][x].note)
+    --  end
+    --end
     
 
     for i=1,4 do
