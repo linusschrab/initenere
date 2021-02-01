@@ -1,5 +1,6 @@
 -- INITENERE
 -- @vicimity (linus schrab)
+-- https://llllllll.co/t/initenere
 --
 --  /// confining spaces 
 --  of random seeds ///
