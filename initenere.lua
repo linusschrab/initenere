@@ -72,7 +72,7 @@ oct_modes = {1, 3, 5}
 local crow_gate_length = 0.005
 local crow_gate_volts = 5
 
-local pset_wsyn_curve = 0
+local pset_wsyn_curve = 2
 local pset_wsyn_ramp = 0
 local pset_wsyn_fm_index = 0
 local pset_wsyn_fm_env = 0
@@ -314,12 +314,11 @@ function add_params()
   params:add_option("seq_3_oct", "s3. oct range +/-", oct_modes, 2)
   params:add_option("seq_4_oct", "s4. oct range +/-", oct_modes, 2)
 
-
-  
   params:add_group("molly the poly", 46)
   MollyThePoly.add_params()
   wsyn_add_params()
-
+  params:bang()
+  params:set("wsyn_init",1)
 end
 
 function wsyn_add_params()
@@ -432,7 +431,7 @@ function wsyn_add_params()
     end
   }
   params:add{
-    type = "binary",
+    type = "trigger",
     id = "wsyn_init",
     name = "Init",
     action = function()
