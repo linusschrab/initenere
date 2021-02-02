@@ -51,6 +51,8 @@ local music = require("musicutil")
 local MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
 engine.name = "MollyThePoly"
 
+g = grid.connect()
+
 lattice = require("lattice")
 
 screen_dirty = true
@@ -111,6 +113,22 @@ time_dirty_stack = {}
 k3_is_held = false
 
 scales = {}
+
+momentary = {}
+for x = 1,16 do
+  momentary[x] = {}
+  for y = 1,8 do
+    momentary[x][y] = false
+  end
+end
+
+press_counter = {}
+for x = 1,16 do
+  press_counter[x] = {}
+  for y = 1,8 do
+    press_counter[x][y] = false
+  end
+end
 
 function init()
 
@@ -240,7 +258,9 @@ function go()
         clock.sleep(1/15)
         if screen_dirty then 
             redraw()
-            screen_dirty = false 
+            grid_redraw()
+            screen_dirty = false
+            --grid_dirty = false
         end
         if grid_dirty then 
             grid_redraw()
@@ -490,6 +510,112 @@ function enc(e,d)
   screen_dirty = true
 end
 
+function long_press(x,y)
+  if x == 5 and y < 7 and y > 2 then
+    if momentary[x+1][y] then
+      matrix[y-2].cycle_dir = 4
+      dont_sleep = true
+      return
+    end
+  end
+  if x == 6 and y < 7 and y > 2 then
+    if momentary[x-1][y] then
+      matrix[y-2].cycle_dir = 4
+      dont_sleep = true
+      return
+    end
+  end
+  if y == 1 and x < 11 and x > 6 then
+    if momentary[x][y+1] then
+      matrix[x-6].x_cycle_dir = 4
+      dont_sleep = true
+      return
+    end
+  end
+  if y == 2 and x < 11 and x > 6 then
+    if momentary[x][y-1] then
+      matrix[x-6].x_cycle_dir = 4
+      dont_sleep = true
+      return
+    end
+  end
+  clock.sleep(.6)
+  if x == 5 and y < 15 and y > 2 then
+      matrix[y-2].cycle_dir = 1
+  elseif x == 6 and y < 15 and y > 2 then
+      matrix[y-2].cycle_dir = 1
+  end
+  if y == 1 and x < 11 and x > 6 then
+      matrix[x-6].x_cycle_dir = 1
+  elseif y == 2 and x < 11 and x > 6 then
+      matrix[x-6].x_cycle_dir = 1
+  end
+  
+  press_counter[x][y] = nil
+end
+
+function short_press(x,y)
+  if x == 5 and y < 7 and y > 2 then
+      matrix[y-2].cycle_dir = 3
+  elseif x == 6 and y < 7 and y > 2 then
+      matrix[y-2].cycle_dir = 2
+  end
+  if y == 1 and x < 11 and x > 6 then
+      matrix[x-6].x_cycle_dir = 3
+  elseif y == 2 and x < 11 and x > 6 then
+      matrix[x-6].x_cycle_dir = 2
+  end
+end
+
+g.key = function(x,y,z)
+  if z == 1 then
+    momentary[x][y] = true
+    dont_sleep = false
+    press_counter[x][y] = clock.run(long_press,x,y)
+    
+    if x > 6 and x < 11 and y > 2 and y < 7 then
+      matrix[y - 2].x_position = x - 6
+      play(y - 2)
+    end
+    
+    if x == 11 and y < 7 and y > 2 then
+      matrix[y-2].screen_time = util.clamp(matrix[y-2].screen_time - 1, 1, #time.modes)
+      table.insert(time_dirty_stack, {seq=y-2, time = util.clamp(matrix[y-2].screen_time, 1, #time.modes)})
+      time_dirty = true
+    elseif x == 12 and y < 7 and y > 2 then
+      matrix[y-2].screen_time = util.clamp(matrix[y-2].screen_time + 1, 1, #time.modes)
+      table.insert(time_dirty_stack, {seq=y-2, time = util.clamp(matrix[y-2].screen_time, 1, #time.modes)})
+      time_dirty = true
+    end
+    if y == 7 and x < 11 and x > 6 then
+      matrix[x-6].screen_y_time = util.clamp(matrix[x-6].screen_y_time - 1, 1, #time.modes)
+      table.insert(time_dirty_stack, {seq=x-2, time = util.clamp(matrix[x-6].screen_y_time, 1, #time.modes)})
+      time_dirty = true
+    elseif y == 8 and x < 11 and x > 6 then
+      matrix[x-6].screen_y_time = util.clamp(matrix[x-6].screen_y_time + 1, 1, #time.modes)
+      table.insert(time_dirty_stack, {seq=x-2, time = util.clamp(matrix[x-6].screen_y_time, 1, #time.modes)})
+      time_dirty = true
+    end
+    if x == 2 and y < 7 and y > 2 then
+      params:set("seq_"..(y-2).."_off", util.clamp(params:get("seq_"..(y-2).."_off")-1,-3,3))
+    elseif x == 3 and y < 7 and y > 2 then
+      params:set("seq_"..(y-2).."_off", util.clamp(params:get("seq_"..(y-2).."_off")+1,-3,3))
+    end
+    if x == 14 and y < 7 and y > 2 then
+      params:set("seq_"..(y-2).."_oct", util.clamp(params:get("seq_"..(y-2).."_oct")-1,1,3))
+    elseif x == 15 and y < 7 and y > 2 then
+      params:set("seq_"..(y-2).."_oct", util.clamp(params:get("seq_"..(y-2).."_oct")+1,1,3))
+    end
+  else 
+    if press_counter[x][y] then
+      clock.cancel(press_counter[x][y])
+      if dont_sleep ~= true then short_press(x,y) end
+    end
+    momentary[x][y] = false
+  end
+  screen_dirty = true
+end
+
 function key(k,z)
   if z == 1 then
     if k == 3 then
@@ -501,6 +627,76 @@ function key(k,z)
     k3_is_held = false
   end
   screen_dirty = true
+end
+
+function grid_redraw()
+  g:all(0)
+  for y=1,4 do
+    for x=1,4 do
+      if x == matrix[y].x_position then hl = 15 else hl = 3 end
+      g:led(6+x,y+2,hl)
+    end
+  end
+  --direction leds
+  for y=1,4 do
+    --edit == "seed/rule" and 15 or 2
+    if matrix[y].cycle_dir == 4 then
+      g:led(5,2+y,15)
+      g:led(6,2+y,15)
+    else
+      g:led(5,2+y,matrix[y].cycle_dir == 3 and 15 or 5)
+      g:led(6,2+y,matrix[y].cycle_dir == 2 and 15 or 5)
+    end
+  end
+  --octave offset leds
+  for y=1,4 do
+    hl = (params:get("seq_"..y.."_off") + 4) * 2 
+    g:led(2,2+y,14-hl)
+    g:led(3,2+y,hl)
+  end
+  --speed leds
+  for y=1,4 do
+    hl = math.floor(matrix[y].screen_time)
+    --print(hl)
+    g:led(11,2+y,16-hl)
+    g:led(12,2+y,hl-1)
+  end
+  --octave range leds
+  for y=1,4 do
+    hl = 2 + (params:get("seq_"..y.."_oct")-1) * 6
+    g:led(14,2+y,14-hl)
+    g:led(15,2+y,hl)
+  end
+
+  --direction vertical
+  for x=1,4 do
+    --edit == "seed/rule" and 15 or 2
+    if matrix[x].x_cycle_dir == 4 then
+      g:led(6+x,1,15)
+      g:led(6+x,2,15)
+    else
+      g:led(x+6,1,matrix[x].x_cycle_dir == 3 and 15 or 5)
+      g:led(x+6,2,matrix[x].x_cycle_dir == 2 and 15 or 5)
+    end
+  end
+
+  --speed vertical
+  for x=1,4 do
+    hl = math.floor(matrix[x].screen_y_time)
+    g:led(6+x,7,16-hl)
+    g:led(6+x,8,hl-1)
+  end
+  screen_dirty = true
+  g:refresh()
+end
+
+function test_draw()
+  for y=1,4 do
+    for x=1,4 do
+      screen.move(x*10,y*10)
+      screen.text(matrix[y][x].note)
+    end
+  end
 end
 
 function redraw()
@@ -521,14 +717,7 @@ function redraw()
         end
     end
     
-    -- for testing purposes
-    --for y=1,4 do
-    --  for x=1,4 do
-    --    screen.move(x*10,y*10)
-    --    screen.text(matrix[y][x].note)
-    --  end
-    --end
-    
+    --test_draw()
 
     for i=1,4 do
       screen.level(1)
@@ -567,10 +756,6 @@ function redraw()
     screen_dirty = false
 end
 
-function grid_redraw()
-
-end
-
 function advance_seq(i)
   if matrix[i].cycle_dir == 1 then
     return
@@ -586,14 +771,14 @@ end
 
 function rotate(x)
       if cycle_modes[matrix[x].x_cycle_dir] == ">" then
-        tmp_note = matrix[x][1].note
+        tmp_note = matrix[1][x].note
         for i=1,4 do
           lcl_tmp = matrix[util.wrap(i+1,1,4)][x].note
           matrix[util.wrap(i+1,1,4)][x].note = tmp_note
           tmp_note = lcl_tmp
         end
       elseif cycle_modes[matrix[x].x_cycle_dir] == "<" then
-        tmp_note = matrix[x][1].note
+        tmp_note = matrix[1][x].note
         for i=1,4 do
           lcl_tmp = matrix[util.wrap(1-i,1,4)][x].note
           matrix[util.wrap(1-i,1,4)][x].note = tmp_note
