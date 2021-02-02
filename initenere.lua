@@ -72,6 +72,15 @@ oct_modes = {1, 3, 5}
 local crow_gate_length = 0.005
 local crow_gate_volts = 5
 
+local pset_wsyn_curve = 0
+local pset_wsyn_ramp = 0
+local pset_wsyn_fm_index = 0
+local pset_wsyn_fm_env = 0
+local pset_wsyn_fm_ratio_num = 0
+local pset_wsyn_fm_ratio_den = 0
+local pset_wsyn_lpg_time = 0
+local pset_wsyn_lpg_symmetry = 0
+
 
 --matrix to hold all note values
 matrix = {}
@@ -321,68 +330,96 @@ function wsyn_add_params()
     name = "AR mode",
     options = {"off", "on"},
     default = 2,
-    action = function(val) crow.send("ii.wsyn.ar_mode(" .. (val - 1) .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.ar_mode(" .. (val - 1) .. ")") 
+      pset_wsyn_curve = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_curve",
     name = "Curve",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.curve(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.curve(" .. val .. ")") 
+      pset_wsyn_curve = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_ramp",
     name = "Ramp",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.ramp(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.ramp(" .. val .. ")") 
+      pset_wsyn_ramp = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_fm_index",
     name = "FM index",
     controlspec = controlspec.new(0, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.fm_index(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.fm_index(" .. val .. ")") 
+      pset_wsyn_fm_index = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_fm_env",
     name = "FM env",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.fm_env(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.fm_env(" .. val .. ")") 
+      pset_wsyn_fm_env = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_fm_ratio_num",
     name = "FM ratio numerator",
     controlspec = controlspec.new(1, 20, "lin", 1, 2),
-    action = function(val) crow.send("ii.wsyn.fm_ratio(" .. val .. "," .. params:get("wsyn_fm_ratio_den") .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.fm_ratio(" .. val .. "," .. params:get("wsyn_fm_ratio_den") .. ")") 
+      pset_wsyn_fm_ratio_num = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_fm_ratio_den",
     name = "FM ratio denominator",
     controlspec = controlspec.new(1, 20, "lin", 1, 1),
-    action = function(val) crow.send("ii.wsyn.fm_ratio(" .. params:get("wsyn_fm_ratio_num") .. "," .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.fm_ratio(" .. params:get("wsyn_fm_ratio_num") .. "," .. val .. ")") 
+      pset_wsyn_fm_ratio_den = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_lpg_time",
     name = "LPG time",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.lpg_time(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.lpg_time(" .. val .. ")") 
+      pset_wsyn_lpg_time = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_lpg_symmetry",
     name = "LPG symmetry",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.lpg_symmetry(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.lpg_symmetry(" .. val .. ")") 
+      pset_wsyn_lpg_symmetry = val
+    end
   }
   params:add{
-    type = "binary",
+    type = "trigger",
     id = "wsyn_randomize",
     name = "Randomize",
+    allow_pmap = false,
     action = function()
       params:set("wsyn_curve", math.random(-50, 50)/10)
       params:set("wsyn_ramp", math.random(-50, 50)/10)
@@ -394,6 +431,22 @@ function wsyn_add_params()
       params:set("wsyn_lpg_symmetry", math.random(-50, 50)/10)
     end
   }
+  params:add{
+    type = "binary",
+    id = "wsyn_init",
+    name = "Init",
+    action = function()
+      params:set("wsyn_curve", pset_wsyn_curve)
+      params:set("wsyn_ramp", pset_wsyn_ramp)
+      params:set("wsyn_fm_index", pset_wsyn_fm_index)
+      params:set("wsyn_fm_env", pset_wsyn_fm_env)
+      params:set("wsyn_fm_ratio_num", pset_wsyn_fm_ratio_num)
+      params:set("wsyn_fm_ratio_den", pset_wsyn_fm_ratio_den)
+      params:set("wsyn_lpg_time", pset_wsyn_lpg_time)
+      params:set("wsyn_lpg_symmetry", pset_wsyn_lpg_symmetry)
+    end
+  }
+  params:hide("wsyn_init")
 end
 
 --fill the matrix with random notes
@@ -644,6 +697,16 @@ function savestate()
       io.write(matrix[y][x].note .. "\n")
     end
   end
+  
+  io.write(pset_wsyn_curve .. "\n")
+  io.write(pset_wsyn_ramp .. "\n")
+  io.write(pset_wsyn_fm_index .. "\n")
+  io.write(pset_wsyn_fm_env .. "\n")
+  io.write(pset_wsyn_fm_ratio_num .. "\n")
+  io.write(pset_wsyn_fm_ratio_den .. "\n")
+  io.write(pset_wsyn_lpg_time .. "\n")
+  io.write(pset_wsyn_lpg_symmetry .. "\n")
+
   io.close(file)
   params:write(_path.data .. "initenere/initenere-0"..params:get("selected_set"))
 end
@@ -667,17 +730,29 @@ function loadstate()
             matrix[y][x].note = tonumber(io.read())
         end
     end
-    
-      params:read(_path.data .. "initenere/initenere-0"..params:get("selected_set"))
-      params:bang()
+    params:read(_path.data .. "initenere/initenere-0"..params:get("selected_set"))
+    params:bang()
+    pset_wsyn_curve = tonumber(io.read())
+    pset_wsyn_ramp = tonumber(io.read())
+    pset_wsyn_fm_index = tonumber(io.read())
+    pset_wsyn_fm_env = tonumber(io.read())
+    pset_wsyn_fm_ratio_num = tonumber(io.read())
+    pset_wsyn_fm_ratio_den  = tonumber(io.read())
+    pset_wsyn_lpg_time = tonumber(io.read())
+    pset_wsyn_lpg_symmetry = tonumber(io.read())
+    params:set("wsyn_init",1)
     else
       print("invalid data file")
     end
     io.close(file)
-    grid_dirty = true
+    screen_dirty = true
   end
 end
 
 function rerun()
   norns.script.load(norns.state.script)
+end
+
+function bang()
+  params:bang()
 end
