@@ -64,9 +64,13 @@ time = {
   names = {},
   modes = {}
 }
+for i=1,3 do
+  time["names"][i] = "/"..(5-i)
+  time["modes"][i] = 5-i
+end
 for i=1,16 do
-  time["names"][i] = i.."x"
-  time["modes"][i] = 1/i
+  time["names"][i+3] = "x"..i
+  time["modes"][i+3] = 1/i
 end
 
 oct_modes = {1, 3, 5}
@@ -93,8 +97,8 @@ for y=1,4 do
       cycle_dir = 2,
       octave_range = 2,
       x_cycle_dir = 1,
-      screen_time = 4,
-      screen_y_time = 4
+      screen_time = 7,
+      screen_y_time = 7
     }
     for x=1,4 do
         matrix[y][x] = {
@@ -168,7 +172,7 @@ function init()
         end
         screen_dirty = true
       end,
-      division = time["modes"][matrix[1].time]
+      division = time["modes"][matrix[1].screen_time]
     },
     seq2 = time_handlers:new_pattern{
       action = function(x)
@@ -178,7 +182,7 @@ function init()
         end  
         screen_dirty = true
       end,
-      division = time["modes"][matrix[2].time]
+      division = time["modes"][matrix[2].screen_time]
     },
     seq3 = time_handlers:new_pattern{
       action = function(x)
@@ -188,7 +192,7 @@ function init()
         end       
         screen_dirty = true
       end,
-      division = time["modes"][matrix[3].time]
+      division = time["modes"][matrix[3].screen_time]
     },
     seq4 = time_handlers:new_pattern{
       action = function(x)
@@ -198,7 +202,7 @@ function init()
         end
         screen_dirty = true
       end,
-      division = time["modes"][matrix[4].time]
+      division = time["modes"][matrix[4].screen_time]
     },
     
     seq_y1 = time_handlers:new_pattern{
@@ -206,28 +210,28 @@ function init()
         rotate(1)
         screen_dirty = true
       end,
-      division = time["modes"][matrix[1].y_time]
+      division = time["modes"][matrix[1].screen_y_time]
     },
     seq_y2 = time_handlers:new_pattern{
       action = function(x)
         rotate(2)
         screen_dirty = true
       end,
-      division = time["modes"][matrix[2].y_time]
+      division = time["modes"][matrix[2].screen_y_time]
     },
     seq_y3 = time_handlers:new_pattern{
       action = function(x)
         rotate(3)
         screen_dirty = true
       end,
-      division = time["modes"][matrix[3].y_time]
+      division = time["modes"][matrix[3].screen_y_time]
     },
     seq_y4 = time_handlers:new_pattern{
       action = function(x)
         rotate(4)
         screen_dirty = true
       end,
-      division = time["modes"][matrix[4].y_time]
+      division = time["modes"][matrix[4].screen_y_time]
     }
   }
 
