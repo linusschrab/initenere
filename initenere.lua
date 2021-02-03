@@ -167,7 +167,7 @@ function init()
     seq1 = time_handlers:new_pattern{
       action = function(x)
         advance_seq(1)
-        if params:get("time_1_2") == 2 then
+        if params:get("time_1_2") == 2 and matrix[1].cycle_dir ~= 1 then
           advance_seq(2)
         end
         screen_dirty = true
@@ -177,7 +177,7 @@ function init()
     seq2 = time_handlers:new_pattern{
       action = function(x)
         advance_seq(2)
-        if params:get("time_2_3") == 2 then
+        if params:get("time_2_3") == 2 and matrix[2].cycle_dir ~= 1 then
           advance_seq(3)
         end  
         screen_dirty = true
@@ -187,7 +187,7 @@ function init()
     seq3 = time_handlers:new_pattern{
       action = function(x)
         advance_seq(3)
-        if params:get("time_3_4") == 2 then
+        if params:get("time_3_4") == 2 and matrix[3].cycle_dir ~= 1 then
           advance_seq(4)
         end       
         screen_dirty = true
@@ -197,7 +197,7 @@ function init()
     seq4 = time_handlers:new_pattern{
       action = function(x)
         advance_seq(4)
-        if params:get("time_4_1") == 2 then
+        if params:get("time_4_1") == 2 and matrix[4].cycle_dir ~= 1 then
           advance_seq(1)
         end
         screen_dirty = true
