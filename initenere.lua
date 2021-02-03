@@ -1,4 +1,4 @@
--- INITENERE
+-- INITENERE v0.21b
 -- @vicimity (linus schrab)
 -- https://llllllll.co/t/initenere
 --
@@ -15,8 +15,8 @@
 -- ">" forward, 
 -- "<" backward and 
 -- "~" random
--- E3 - speed up / slow down
--- 1x -> 16x
+-- E3 -  slow down/speed up
+-- /4 -> 16x
 --
 -- ~vertical~~
 -- 5-8 alters to the note matrix
@@ -25,8 +25,8 @@
 -- ">" forward, 
 -- "<" backward and 
 -- "~" random
--- E3 - speed up / slow down
--- 1x -> 16x
+-- E3 -  slow down/speed up
+-- /4 -> 16x
 -- 
 -- alt. edit w. K3
 -- hold while 1-4
@@ -166,9 +166,11 @@ function init()
   sequencers = {
     seq1 = time_handlers:new_pattern{
       action = function(x)
-        advance_seq(1)
-        if params:get("time_1_2") == 2 and matrix[1].cycle_dir ~= 1 then
-          advance_seq(2)
+        if matrix[1].cycle_dir ~= 1 then
+          advance_seq(1)
+          if params:get("time_1_2") == 2 then advance_seq(2) end
+          if params:get("time_1_3") == 2 then advance_seq(3) end
+          if params:get("time_1_4") == 2 then advance_seq(4) end
         end
         screen_dirty = true
       end,
@@ -176,30 +178,36 @@ function init()
     },
     seq2 = time_handlers:new_pattern{
       action = function(x)
-        advance_seq(2)
-        if params:get("time_2_3") == 2 and matrix[2].cycle_dir ~= 1 then
-          advance_seq(3)
-        end  
+        if matrix[2].cycle_dir ~= 1 then
+          advance_seq(2)
+          if params:get("time_2_1") == 2 then advance_seq(1) end
+          if params:get("time_2_3") == 2 then advance_seq(3) end
+          if params:get("time_2_4") == 2 then advance_seq(4) end
+        end
         screen_dirty = true
       end,
       division = time["modes"][matrix[2].screen_time]
     },
     seq3 = time_handlers:new_pattern{
       action = function(x)
-        advance_seq(3)
-        if params:get("time_3_4") == 2 and matrix[3].cycle_dir ~= 1 then
-          advance_seq(4)
-        end       
+        if matrix[3].cycle_dir ~= 1 then
+          advance_seq(3)
+          if params:get("time_3_1") == 2 then advance_seq(1) end
+          if params:get("time_3_2") == 2 then advance_seq(2) end
+          if params:get("time_3_4") == 2 then advance_seq(4) end
+        end   
         screen_dirty = true
       end,
       division = time["modes"][matrix[3].screen_time]
     },
     seq4 = time_handlers:new_pattern{
       action = function(x)
-        advance_seq(4)
-        if params:get("time_4_1") == 2 and matrix[4].cycle_dir ~= 1 then
-          advance_seq(1)
-        end
+        if matrix[4].cycle_dir ~= 1 then
+          advance_seq(4)
+          if params:get("time_4_1") == 2 then advance_seq(1) end
+          if params:get("time_4_2") == 2 then advance_seq(2) end
+          if params:get("time_4_3") == 2 then advance_seq(3) end
+        end  
         screen_dirty = true
       end,
       division = time["modes"][matrix[4].screen_time]
@@ -287,21 +295,21 @@ function add_params()
   params:add_number("midi_channel_C", "midi channel C", 1, 16, 3)
   params:add_number("midi_channel_D", "midi channel D", 1, 16, 4)
   for i=1,4 do
-    params:add_separator("seq "..i.." outputs")
-    params:add_option("seq_"..i.."_engine", "seq "..i.." -> engine", {"no", "yes"}, 2)
-    params:add_option("seq_"..i.."_midi_A", "seq "..i.." -> midi ch A", {"no", "yes"}, 2)
-    params:add_option("seq_"..i.."_midi_B", "seq "..i.." -> midi ch B", {"no", "yes"}, 1)
-    params:add_option("seq_"..i.."_midi_C", "seq "..i.." -> midi ch C", {"no", "yes"}, 1)
-    params:add_option("seq_"..i.."_midi_D", "seq "..i.." -> midi ch D", {"no", "yes"}, 1)
-    params:add_option("seq_"..i.."_crow_1", "seq "..i.." -> crow 1/2", {"no", "yes"}, 1)
+    params:add_separator("s"..i..". outputs")
+    params:add_option("seq_"..i.."_engine", "s"..i..". -> engine", {"no", "yes"}, 2)
+    params:add_option("seq_"..i.."_midi_A", "s"..i..". -> midi ch A", {"no", "yes"}, 2)
+    params:add_option("seq_"..i.."_midi_B", "s"..i..". -> midi ch B", {"no", "yes"}, 1)
+    params:add_option("seq_"..i.."_midi_C", "s"..i..". -> midi ch C", {"no", "yes"}, 1)
+    params:add_option("seq_"..i.."_midi_D", "s"..i..". -> midi ch D", {"no", "yes"}, 1)
+    params:add_option("seq_"..i.."_crow_1", "s"..i..". -> crow 1/2", {"no", "yes"}, 1)
     params:set_action("seq_"..i.."_crow_1", function (x)
       crow.output[2].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
     end)
-    params:add_option("seq_"..i.."_crow_2", "seq "..i.." -> crow 3/4", {"no", "yes"}, 1)
+    params:add_option("seq_"..i.."_crow_2", "s"..i..". -> crow 3/4", {"no", "yes"}, 1)
     params:set_action("seq_"..i.."_crow_2", function (x)
       crow.output[4].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
     end)
-    params:add_option("seq_"..i.."_JF", "seq "..i.." -> JF", {"no", "yes"}, 1)
+    params:add_option("seq_"..i.."_JF", "s"..i..". -> JF", {"no", "yes"}, 1)
     params:set_action("seq_"..i.."_JF", function(x)
       if params:get("seq_".. util.wrap(i+1,1,4) .."_JF") == 1 or params:get("seq_".. util.wrap(i+2,1,4) .."_JF") == 1 or params:get("seq_".. util.wrap(i+3,1,4) .."_JF") == 1 then
         if x == 2 then
@@ -311,21 +319,37 @@ function add_params()
         end
       end
     end)
-    params:add_option("seq_"..i.."_w", "seq "..i.." -> w/syn", {"no", "yes"}, 1)
+    params:add_option("seq_"..i.."_w", "s"..i..". -> w/syn", {"no", "yes"}, 1)
   end
 
-  params:add_group("time routings", 5)
-  params:add_separator("route time to neighbors")
-  params:add_option("time_1_2", "s1. -> s2.", {"no", "yes"}, 1)
-  params:add_option("time_2_3", "s2. -> s3.", {"no", "yes"}, 1)
-  params:add_option("time_3_4", "s3. -> s4.", {"no", "yes"}, 1)
-  params:add_option("time_4_1", "s4. -> s1.", {"no", "yes"}, 1)
+  params:add_group("time routings", 16)
+  params:add_separator(" - s1. - ")
+
+  params:add_option("time_1_2", "-> s2.", {"no", "yes"}, 1)
+  params:add_option("time_1_3", "-> s3.", {"no", "yes"}, 1)
+  params:add_option("time_1_4", "-> s4.", {"no", "yes"}, 1)
+  
+  params:add_separator(" - s2. - ")
+  params:add_option("time_2_1", "-> s1.", {"no", "yes"}, 1)
+  params:add_option("time_2_3", "-> s3.", {"no", "yes"}, 1)
+  params:add_option("time_2_4", "-> s4.", {"no", "yes"}, 1)
+  
+  params:add_separator(" - s3. - ")
+  params:add_option("time_3_1", "-> s1.", {"no", "yes"}, 1)
+  params:add_option("time_3_2", "-> s2.", {"no", "yes"}, 1)
+  params:add_option("time_3_4", "-> s4.", {"no", "yes"}, 1)
+
+  params:add_separator(" - s4. - ")
+  params:add_option("time_4_1", "-> s1.", {"no", "yes"}, 1)
+  params:add_option("time_4_2", "-> s2.", {"no", "yes"}, 1)
+  params:add_option("time_4_3", "-> s3.", {"no", "yes"}, 1)
     
 
-  params:add_group("scale & notes",14)
+  params:add_group("scale, notes and octaves",15)
   params:add_separator("scale")
   params:add_option("scale","scale",scales,1)
   params:add_option("root_note", "root note", music.note_nums_to_names({0,1,2,3,4,5,6,7,8,9,10,11}),1)
+  params:add_separator("notes")
   params:add_trigger("randomize_notes", "randomize note matrix")
   params:set_action("randomize_notes", function(x) randomize_notes() end)
   params:add_separator("octave offset")
@@ -660,10 +684,10 @@ function grid_redraw()
   end
   --speed leds
   for y=1,4 do
-    hl = math.floor(matrix[y].screen_time)
+    hl = math.floor( 15 * matrix[y].screen_time / #time.modes )
     --print(hl)
-    g:led(11,2+y,16-hl)
-    g:led(12,2+y,hl-1)
+    g:led(11,2+y,15-hl)
+    g:led(12,2+y,hl)
   end
   --octave range leds
   for y=1,4 do
@@ -686,9 +710,9 @@ function grid_redraw()
 
   --speed vertical
   for x=1,4 do
-    hl = math.floor(matrix[x].screen_y_time)
-    g:led(6+x,7,16-hl)
-    g:led(6+x,8,hl-1)
+    hl = math.floor( 15 * matrix[x].screen_y_time / #time.modes )    
+    g:led(6+x,7,15-hl)
+    g:led(6+x,8,hl)
   end
   screen_dirty = true
   g:refresh()
@@ -761,9 +785,7 @@ function redraw()
 end
 
 function advance_seq(i)
-  if matrix[i].cycle_dir == 1 then
-    return
-  elseif cycle_modes[matrix[i].cycle_dir] == ">" then
+  if cycle_modes[matrix[i].cycle_dir] == ">" then
     matrix[i].x_position = util.wrap(matrix[i].x_position + 1, 1, 4)
   elseif cycle_modes[matrix[i].cycle_dir] == "<" then
     matrix[i].x_position = util.wrap(matrix[i].x_position - 1, 1, 4)
