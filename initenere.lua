@@ -1,4 +1,4 @@
--- INITENERE v0.21b
+-- INITENERE
 -- @vicimity (linus schrab)
 -- https://llllllll.co/t/initenere
 --
