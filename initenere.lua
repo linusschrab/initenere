@@ -48,12 +48,20 @@
 -- w/syn
 
 local music = require("musicutil")
+
+--molly the poly
 local MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
 engine.name = "MollyThePoly"
 
+--uncomment below for the bangs
+--thebangs = include('thebangs/lib/thebangs_engine')
+--local Thebangs = require "thebangs/lib/thebangs_engine"
+--engine.name = 'Thebangs'
+
+
 g = grid.connect()
 
-lattice = require("lattice")
+lattice = include("initenere/lib/lattice")
 
 screen_dirty = true
 grid_dirty = true
@@ -73,7 +81,7 @@ for i=1,16 do
   time["modes"][i+3] = 1/i
 end
 
-oct_modes = {1, 3, 5}
+oct_modes = {"x", "1", "2", "4"}
 
 local crow_gate_length = 0.005
 local crow_gate_volts = 5
@@ -87,6 +95,25 @@ local pset_wsyn_fm_ratio_den = 0
 local pset_wsyn_lpg_time = 0
 local pset_wsyn_lpg_symmetry = 0
 
+local transport_run = true
+
+function clock.transport.start()
+  if params:get("midi_transport") == 2 then
+    time_handlers:hard_sync()
+    transport_run = true
+    screen_dirty = true
+  end
+end
+
+function clock.transport.stop()
+  if params:get("midi_transport") == 2 then
+    for i=1,4 do
+      matrix[i].x_position = 4
+    end
+    time_handlers:stop()
+    transport_run = false
+  end
+end
 
 --matrix to hold all note values
 matrix = {}
@@ -132,6 +159,10 @@ for x = 1,16 do
   for y = 1,8 do
     press_counter[x][y] = false
   end
+end
+
+function process_change(v)
+  randomize_notes()
 end
 
 function init()
@@ -244,7 +275,7 @@ function init()
   }
 
   for i=1,4 do
-    params:add_number("time"..i, "s"..i.." division", 1,16,4)
+    params:add_number("time"..i, "s"..i.." division", 1,19,7)
     params:set_action("time"..i, function(x)
       sequencers["seq"..i]:set_division(time.modes[x])
       matrix[i].screen_time = x
@@ -253,7 +284,7 @@ function init()
   end
 
   for i=5,8 do
-    params:add_number("time"..i, "s"..i.." division", 1,16,4)
+    params:add_number("time"..i, "s"..i.." division", 1,19,7)
     params:set_action("time"..i, function(x)
       sequencers["seq_y"..(i-4)]:set_division(time.modes[x])
       matrix[i-4].screen_y_time = x
@@ -287,13 +318,29 @@ function add_params()
   params:add{type = "trigger", id = "load", name = "load", action = loadstate}
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
 
-  params:add_group("midi & outputs",46)
+  params:add_group("midi, crow & outputs",49)
   params:add_separator("midi")
   params:add_number("midi_device", "midi device", 1, #midi.vports, 1)
   params:add_number("midi_channel_A", "midi channel A", 1, 16, 1)
   params:add_number("midi_channel_B", "midi channel B", 1, 16, 2)
   params:add_number("midi_channel_C", "midi channel C", 1, 16, 3)
   params:add_number("midi_channel_D", "midi channel D", 1, 16, 4)
+  params:add_option("midi_transport", "midi/link transport", {"off", "on"}, 2)
+  params:set_action("midi_transport", function (x) 
+    if x == 1 then transport_run = true end
+  end)
+
+  params:add_separator("crow")
+  params:add_option("crow_in", "in 2 -> randomize notes", {"no", "yes"}, 1)
+  params:set_action("crow_in", function(x)
+    if x == 2 then
+      crow.input[2].change = process_change
+      crow.input[2].mode("change", 2.0, 0.25, "rise")
+    else
+      crow.input[2].mode("none")
+    end
+  end)
+
   for i=1,4 do
     params:add_separator("s"..i..". outputs")
     params:add_option("seq_"..i.."_engine", "s"..i..". -> engine", {"no", "yes"}, 2)
@@ -322,7 +369,13 @@ function add_params()
     params:add_option("seq_"..i.."_w", "s"..i..". -> w/syn", {"no", "yes"}, 1)
   end
 
-  params:add_group("time routings", 16)
+  params:add_group("note prob. & time routings", 22)
+  params:add_separator("note probability")
+  for i = 1,4 do
+    params:add_control("prob_"..i, "s"..i..".", controlspec.new(0,100,'lin',1,100,'%'))
+  end
+
+  params:add_separator("time routings")
   params:add_separator(" - s1. - ")
 
   params:add_option("time_1_2", "-> s2.", {"no", "yes"}, 1)
@@ -357,13 +410,19 @@ function add_params()
     params:add_number("seq_"..i.."_off", "s"..i..". octave offset", -3,3,0)
   end
   params:add_separator("octave range")
-  params:add_option("seq_1_oct", "s1. oct range +/-", oct_modes, 2)
-  params:add_option("seq_2_oct", "s2. oct range +/-", oct_modes, 2)
-  params:add_option("seq_3_oct", "s3. oct range +/-", oct_modes, 2)
-  params:add_option("seq_4_oct", "s4. oct range +/-", oct_modes, 2)
+  params:add_option("seq_1_oct", "s1. oct range +/-", oct_modes, 3)
+  params:add_option("seq_2_oct", "s2. oct range +/-", oct_modes, 3)
+  params:add_option("seq_3_oct", "s3. oct range +/-", oct_modes, 3)
+  params:add_option("seq_4_oct", "s4. oct range +/-", oct_modes, 3)
 
+  --molly  the poly
   params:add_group("molly the poly", 46)
   MollyThePoly.add_params()
+  --uncomment below for the bangs
+  --params:add_group("the bangs", 6)
+  --Thebangs.add_additional_synth_params()
+  --Thebangs.add_voicer_params()
+
   wsyn_add_params()
   params:bang()
   params:set("wsyn_init",1)
@@ -600,10 +659,37 @@ g.key = function(x,y,z)
     momentary[x][y] = true
     dont_sleep = false
     press_counter[x][y] = clock.run(long_press,x,y)
-    
+
+    if x == 16 and y > 2 and y < 7 then
+      for i=1,4 do
+        if momentary[1][i+2] then
+          for j=1,4 do
+            if j ~= y-2 then
+              params:set("time_"..i.."_"..y-2, params:get("time_"..i.."_"..y-2) == 2 and 1 or 2)
+            end
+          end
+        end
+      end
+    end
+
     if x > 6 and x < 11 and y > 2 and y < 7 then
-      matrix[y - 2].x_position = x - 6
-      play(y - 2)
+      for i=1,4 do
+        if momentary[1][i+2] then
+          for j=1,4 do
+            if j == y-2 then
+              params:set("prob_"..i, (x-6)*25)
+            end
+          end
+        end
+      end
+    end
+    
+
+    if x > 6 and x < 11 and y > 2 and y < 7 then
+      if momentary[1][y] ~= true then
+        matrix[y - 2].x_position = x - 6
+        play(y - 2)
+      end
     end
     
     if x == 11 and y < 7 and y > 2 then
@@ -630,9 +716,9 @@ g.key = function(x,y,z)
       params:set("seq_"..(y-2).."_off", util.clamp(params:get("seq_"..(y-2).."_off")+1,-3,3))
     end
     if x == 14 and y < 7 and y > 2 then
-      params:set("seq_"..(y-2).."_oct", util.clamp(params:get("seq_"..(y-2).."_oct")-1,1,3))
+      params:set("seq_"..(y-2).."_oct", util.clamp(params:get("seq_"..(y-2).."_oct")-1,1,#oct_modes))
     elseif x == 15 and y < 7 and y > 2 then
-      params:set("seq_"..(y-2).."_oct", util.clamp(params:get("seq_"..(y-2).."_oct")+1,1,3))
+      params:set("seq_"..(y-2).."_oct", util.clamp(params:get("seq_"..(y-2).."_oct")+1,1,#oct_modes))
     end
   else 
     if press_counter[x][y] then
@@ -659,15 +745,24 @@ end
 
 function grid_redraw()
   g:all(0)
-  for y=1,4 do
-    for x=1,4 do
-      if x == matrix[y].x_position then hl = 15 else hl = 3 end
-      g:led(6+x,y+2,hl)
+
+  for i=1,4 do
+    if momentary[1][i+2] == true then
+      prob_led = math.floor(util.round((params:get("prob_"..i) / 100) * 4, 0))
+      for j=1,prob_led do
+        g:led(6+j,i+2,8)
+      end
+    else
+      for x=1,4 do
+        if x == matrix[i].x_position then hl = 15 else hl = 3 end
+        g:led(6+x,i+2,hl)
+      end
     end
   end
+  
+  
   --direction leds
   for y=1,4 do
-    --edit == "seed/rule" and 15 or 2
     if matrix[y].cycle_dir == 4 then
       g:led(5,2+y,15)
       g:led(6,2+y,15)
@@ -685,14 +780,13 @@ function grid_redraw()
   --speed leds
   for y=1,4 do
     hl = math.floor( 15 * matrix[y].screen_time / #time.modes )
-    --print(hl)
     g:led(11,2+y,15-hl)
     g:led(12,2+y,hl)
   end
   --octave range leds
   for y=1,4 do
-    hl = 2 + (params:get("seq_"..y.."_oct")-1) * 6
-    g:led(14,2+y,14-hl)
+    hl = params:get("seq_"..y.."_oct") * 4 - 1
+    g:led(14,2+y,15-hl)
     g:led(15,2+y,hl)
   end
 
@@ -714,6 +808,30 @@ function grid_redraw()
     g:led(6+x,7,15-hl)
     g:led(6+x,8,hl)
   end
+
+  for i=3,6 do
+    if momentary[13][i] == true then
+      g:led(13,i,8)
+    end
+  end
+
+  for i=3,6 do
+    if momentary[4][i] == true then
+      g:led(4,i,8)
+    end
+  end
+
+  for i=1,4 do
+    if momentary[1][i+2] == true then
+      g:led(1,i+2,8)
+      for j=1,4 do
+        if i ~= j then
+          if params:get("time_"..i.."_"..j) == 2 then g:led(16,j+2,8) end
+        end
+      end
+    end
+  end
+
   screen_dirty = true
   g:refresh()
 end
@@ -785,12 +903,14 @@ function redraw()
 end
 
 function advance_seq(i)
-  if cycle_modes[matrix[i].cycle_dir] == ">" then
-    matrix[i].x_position = util.wrap(matrix[i].x_position + 1, 1, 4)
-  elseif cycle_modes[matrix[i].cycle_dir] == "<" then
-    matrix[i].x_position = util.wrap(matrix[i].x_position - 1, 1, 4)
-  elseif  cycle_modes[matrix[i].cycle_dir] == "~" then
-    matrix[i].x_position = math.random(1, 4)
+  if momentary[4][2+i] ~= true then
+    if cycle_modes[matrix[i].cycle_dir] == ">" then
+      matrix[i].x_position = util.wrap(matrix[i].x_position + 1, 1, 4)
+    elseif cycle_modes[matrix[i].cycle_dir] == "<" then
+      matrix[i].x_position = util.wrap(matrix[i].x_position - 1, 1, 4)
+    elseif  cycle_modes[matrix[i].cycle_dir] == "~" then
+      matrix[i].x_position = math.random(1, 4)
+    end
   end
   play(i)
 end
@@ -833,53 +953,70 @@ end
 
 function play(i)
 
-  if params:get("seq_"..i.."_oct") == 1 then tmp_off = 48
-  elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 24
-  elseif params:get("seq_"..i.."_oct") == 3 then tmp_off = 0
+  --if params:get("seq_"..i.."_oct") == 1 then tmp_off = 48
+  --elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 24
+  --elseif params:get("seq_"..i.."_oct") == 3 then tmp_off = 0
+  --end
+  if params:get("seq_"..i.."_oct") == 1 then tmp_off = 60
+  elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 60
+  elseif params:get("seq_"..i.."_oct") == 3 then tmp_off = 48
+  elseif params:get("seq_"..i.."_oct") == 4 then tmp_off = 36
   end
 
-  oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], 2*oct_modes[params:get("seq_"..i.."_oct")])
-  scaled_oct_range = {}
-  for j=1,#oct_range do
-    scaled_oct_range[j] = oct_range[j] + tmp_off + (12 * params:get("seq_"..i.."_off"))
+  if params:get("seq_"..i.."_oct") == 1 then 
+    playnote = tmp_off + params:get("root_note")-1 + (12 * params:get("seq_"..i.."_off"))
+  else
+    --oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], 2*oct_modes[params:get("seq_"..i.."_oct")])
+    oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], oct_modes[params:get("seq_"..i.."_oct")])
+    scaled_oct_range = {}
+    for j=1,#oct_range do
+      scaled_oct_range[j] = oct_range[j] + tmp_off + (12 * params:get("seq_"..i.."_off"))
+    end
+    playnote = music.snap_note_to_array(matrix[i][matrix[i].x_position].note+ (12 * params:get("seq_"..i.."_off")), scaled_oct_range)
   end
-  playnote = music.snap_note_to_array(matrix[i][matrix[i].x_position].note+ (12 * params:get("seq_"..i.."_off")), scaled_oct_range)
   
-    if params:get("seq_"..i.."_engine") == 2 then
-      engine.noteOn(playnote, music.note_num_to_freq(playnote),100)
-      clock.run(mollyhang, playnote,i)
-    end
-    if params:get("seq_"..i.."_midi_A") == 2 then
-      m:note_on(playnote,100,params:get("midi_channel_A"))
-      clock.run(midihang, i, playnote, params:get("midi_channel_A"))
-    end
-    if params:get("seq_"..i.."_midi_B") == 2 then
-      m:note_on(playnote,100,params:get("midi_channel_B"))
-      clock.run(midihang, i, playnote, params:get("midi_channel_B"))
-    end
-    if params:get("seq_"..i.."_midi_C") == 2 then
-      m:note_on(playnote,100,params:get("midi_channel_C"))
-      clock.run(midihang, i, playnote, params:get("midi_channel_C"))
-    end
-    if params:get("seq_"..i.."_midi_D") == 2 then
-      m:note_on(playnote,100,params:get("midi_channel_D"))
-      clock.run(midihang, i, playnote, params:get("midi_channel_D"))
-    end
-    if params:get("seq_"..i.."_crow_1") == 2 then
-      crow.output[1].volts = (((playnote)-60)/12)
-      crow.output[2].execute()
-    end
-    if params:get("seq_"..i.."_crow_2") == 2 then
-      crow.output[3].volts = (((playnote)-60)/12)
-      crow.output[4].execute()
-    end
-    if params:get("seq_"..i.."_JF") == 2 then
-      crow.ii.jf.play_note(((playnote)-60)/12,5)
-    end
-    if params:get("seq_"..i.."_w") == 2 then
-      crow.send("ii.wsyn.play_note(".. ((playnote)-60)/12 ..", " .. 5 .. ")")
+  if momentary[13][2+i] ~= true then
+    if math.random(0,100) <= params:get("prob_"..i) then
+      if params:get("seq_"..i.."_engine") == 2 then
+        --molly the poly
+        engine.noteOn(playnote, music.note_num_to_freq(playnote),100)
+        clock.run(mollyhang, playnote,i)
+        --uncomment below for the bangs
+        --engine.hz(music.note_num_to_freq(playnote))
+      end
+      if params:get("seq_"..i.."_midi_A") == 2 then
+        m:note_on(playnote,100,params:get("midi_channel_A"))
+        clock.run(midihang, i, playnote, params:get("midi_channel_A"))
+      end
+      if params:get("seq_"..i.."_midi_B") == 2 then
+        m:note_on(playnote,100,params:get("midi_channel_B"))
+        clock.run(midihang, i, playnote, params:get("midi_channel_B"))
+      end
+      if params:get("seq_"..i.."_midi_C") == 2 then
+        m:note_on(playnote,100,params:get("midi_channel_C"))
+        clock.run(midihang, i, playnote, params:get("midi_channel_C"))
+      end
+      if params:get("seq_"..i.."_midi_D") == 2 then
+        m:note_on(playnote,100,params:get("midi_channel_D"))
+        clock.run(midihang, i, playnote, params:get("midi_channel_D"))
+      end
+      if params:get("seq_"..i.."_crow_1") == 2 then
+        crow.output[1].volts = (((playnote)-60)/12)
+        crow.output[2].execute()
+      end
+      if params:get("seq_"..i.."_crow_2") == 2 then
+        crow.output[3].volts = (((playnote)-60)/12)
+        crow.output[4].execute()
+      end
+      if params:get("seq_"..i.."_JF") == 2 then
+        crow.ii.jf.play_note(((playnote)-60)/12,5)
+      end
+      if params:get("seq_"..i.."_w") == 2 then
+        crow.send("ii.wsyn.play_note(".. ((playnote)-60)/12 ..", " .. 5 .. ")")
+      end
     end
   end
+end
   
 function mollyhang(note,i)
   clock.sleep(time.modes[params:get("time"..i)]/2)
