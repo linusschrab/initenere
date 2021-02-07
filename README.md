@@ -4,6 +4,6 @@
 
 /// Confining spaces of random seeds. ///
 
-2-dimensional polyrythmic, random note sequencer.
+2-dimensional polyrythmic, random note sequencer for the Monome Norns.
 
 https://llllllll.co/t/initenere/41193
