@@ -58,14 +58,16 @@ engine.name = "MollyThePoly"
 --local Thebangs = require "thebangs/lib/thebangs_engine"
 --engine.name = 'Thebangs'
 
+--uncomment below for mx.samples
+--mxsamples=include("mx.samples/lib/mx.samples")
+--engine.name="MxSamples"
+--instruments = {}
 
 g = grid.connect()
 
 lattice = include("initenere/lib/lattice")
 
 screen_dirty = true
-grid_dirty = true
-
 
 cycle_modes = {"-", ">", "<", "~"}
 time = {
@@ -86,7 +88,7 @@ oct_modes = {"x", "1", "2", "4"}
 local crow_gate_length = 0.005
 local crow_gate_volts = 5
 
-local pset_wsyn_curve = 2
+local pset_wsyn_curve = 0
 local pset_wsyn_ramp = 0
 local pset_wsyn_fm_index = 0
 local pset_wsyn_fm_env = 0
@@ -303,11 +305,6 @@ function go()
             redraw()
             grid_redraw()
             screen_dirty = false
-            --grid_dirty = false
-        end
-        if grid_dirty then 
-            grid_redraw()
-            grid_dirty = false 
         end
     end
 end
@@ -422,14 +419,17 @@ function add_params()
   --params:add_group("the bangs", 6)
   --Thebangs.add_additional_synth_params()
   --Thebangs.add_voicer_params()
-
+  --uncomment below for the mx.samples
+  --skeys=mxsamples:new()
+  --instruments = skeys:list_instruments()
+  --params:add_option("mx_ins", "MX.INSTRUMENT", instruments, 1)
   wsyn_add_params()
   params:bang()
   params:set("wsyn_init",1)
 end
 
 function wsyn_add_params()
-  params:add_group("w/syn",10)
+  params:add_group("w/syn",11)
   params:add {
     type = "option",
     id = "wsyn_ar_mode",
@@ -437,8 +437,16 @@ function wsyn_add_params()
     options = {"off", "on"},
     default = 2,
     action = function(val) 
-      crow.send("ii.wsyn.ar_mode(" .. (val - 1) .. ")") 
-      pset_wsyn_curve = val
+      crow.send("ii.wsyn.ar_mode(".. (val-1) ..")")
+    end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_vel",
+    name = "Velocity",
+    controlspec = controlspec.new(0, 5, "lin", 0, 2.5, "v"),
+    action = function(val) 
+      pset_wsyn_vel = val
     end
   }
   params:add {
@@ -626,7 +634,7 @@ function long_press(x,y)
       return
     end
   end
-  clock.sleep(.6)
+  clock.sleep(.5)
   if x == 5 and y < 15 and y > 2 then
       matrix[y-2].cycle_dir = 1
   elseif x == 6 and y < 15 and y > 2 then
@@ -912,7 +920,9 @@ function advance_seq(i)
       matrix[i].x_position = math.random(1, 4)
     end
   end
-  play(i)
+  if math.random(0,100) <= params:get("prob_"..i) and cycle_modes[matrix[i].cycle_dir] ~= "-" then
+    play(i)
+  end
 end
 
 function rotate(x)
@@ -952,75 +962,85 @@ function shuffle(tbl)
 end
 
 function play(i)
+  i_note = matrix[i][matrix[i].x_position].note
 
-  --if params:get("seq_"..i.."_oct") == 1 then tmp_off = 48
-  --elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 24
-  --elseif params:get("seq_"..i.."_oct") == 3 then tmp_off = 0
-  --end
-  if params:get("seq_"..i.."_oct") == 1 then tmp_off = 60
-  elseif params:get("seq_"..i.."_oct") == 2 then tmp_off = 60
-  elseif params:get("seq_"..i.."_oct") == 3 then tmp_off = 48
-  elseif params:get("seq_"..i.."_oct") == 4 then tmp_off = 36
-  end
-
-  if params:get("seq_"..i.."_oct") == 1 then 
-    playnote = tmp_off + params:get("root_note")-1 + (12 * params:get("seq_"..i.."_off"))
-  else
-    --oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], 2*oct_modes[params:get("seq_"..i.."_oct")])
-    oct_range = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], oct_modes[params:get("seq_"..i.."_oct")])
-    scaled_oct_range = {}
-    for j=1,#oct_range do
-      scaled_oct_range[j] = oct_range[j] + tmp_off + (12 * params:get("seq_"..i.."_off"))
+  if params:get("seq_"..i.."_oct") == 4 then -- +/- 2 octaves
+    tmp_off = 60
+    if i_note > tmp_off + 24 then
+      i_note = tmp_off + 12 + i_note % 12
+    elseif i_note < tmp_off - 24 then
+      i_note = tmp_off - 24 + i_note % 12
     end
-    playnote = music.snap_note_to_array(matrix[i][matrix[i].x_position].note+ (12 * params:get("seq_"..i.."_off")), scaled_oct_range)
+  elseif params:get("seq_"..i.."_oct") == 3 then -- +/- 1 octaves
+    tmp_off = 60
+    if i_note > tmp_off + 12 then
+      i_note = tmp_off + i_note % 12
+    elseif i_note < tmp_off - 12 then
+      i_note = tmp_off - 12 + i_note % 12
+    end
+  elseif params:get("seq_"..i.."_oct") == 2 then -- + 1 octave
+    tmp_off = 60
+    if i_note > tmp_off + 12 or i_note < tmp_off - 12 then
+      i_note = 60 + i_note % 12
+    end
+  elseif params:get("seq_"..i.."_oct") == 1 then 
+    tmp_off = 60
+    i_note = 60 + params:get("root_note") - 1
   end
+  playnote = i_note + (12 * params:get("seq_"..i.."_off"))
+
+  scale = music.generate_scale(params:get("root_note")-1, scales[params:get("scale")], 10)
+  playnote = music.snap_note_to_array(playnote,scale)
   
   if momentary[13][2+i] ~= true then
-    if math.random(0,100) <= params:get("prob_"..i) then
-      if params:get("seq_"..i.."_engine") == 2 then
-        --molly the poly
-        engine.noteOn(playnote, music.note_num_to_freq(playnote),100)
-        clock.run(mollyhang, playnote,i)
-        --uncomment below for the bangs
-        --engine.hz(music.note_num_to_freq(playnote))
-      end
-      if params:get("seq_"..i.."_midi_A") == 2 then
-        m:note_on(playnote,100,params:get("midi_channel_A"))
-        clock.run(midihang, i, playnote, params:get("midi_channel_A"))
-      end
-      if params:get("seq_"..i.."_midi_B") == 2 then
-        m:note_on(playnote,100,params:get("midi_channel_B"))
-        clock.run(midihang, i, playnote, params:get("midi_channel_B"))
-      end
-      if params:get("seq_"..i.."_midi_C") == 2 then
-        m:note_on(playnote,100,params:get("midi_channel_C"))
-        clock.run(midihang, i, playnote, params:get("midi_channel_C"))
-      end
-      if params:get("seq_"..i.."_midi_D") == 2 then
-        m:note_on(playnote,100,params:get("midi_channel_D"))
-        clock.run(midihang, i, playnote, params:get("midi_channel_D"))
-      end
-      if params:get("seq_"..i.."_crow_1") == 2 then
-        crow.output[1].volts = (((playnote)-60)/12)
-        crow.output[2].execute()
-      end
-      if params:get("seq_"..i.."_crow_2") == 2 then
-        crow.output[3].volts = (((playnote)-60)/12)
-        crow.output[4].execute()
-      end
-      if params:get("seq_"..i.."_JF") == 2 then
-        crow.ii.jf.play_note(((playnote)-60)/12,5)
-      end
-      if params:get("seq_"..i.."_w") == 2 then
-        crow.send("ii.wsyn.play_note(".. ((playnote)-60)/12 ..", " .. 5 .. ")")
-      end
+    if params:get("seq_"..i.."_engine") == 2 then
+      --molly the poly
+      engine.noteOn(playnote, music.note_num_to_freq(playnote),100)
+      clock.run(eng_hang, playnote,i)
+      --uncomment below for the bangs
+      --engine.hz(music.note_num_to_freq(playnote))
+      --uncomment below for mx.samples
+      --skeys:on({name=instruments[params:get("mx_ins")],midi=playnote,velocity=120})
+    end
+    if params:get("seq_"..i.."_midi_A") == 2 then
+      m:note_on(playnote,100,params:get("midi_channel_A"))
+      clock.run(midihang, i, playnote, params:get("midi_channel_A"))
+    end
+    if params:get("seq_"..i.."_midi_B") == 2 then
+      m:note_on(playnote,100,params:get("midi_channel_B"))
+      clock.run(midihang, i, playnote, params:get("midi_channel_B"))
+    end
+    if params:get("seq_"..i.."_midi_C") == 2 then
+      m:note_on(playnote,100,params:get("midi_channel_C"))
+      clock.run(midihang, i, playnote, params:get("midi_channel_C"))
+    end
+    if params:get("seq_"..i.."_midi_D") == 2 then
+      m:note_on(playnote,100,params:get("midi_channel_D"))
+      clock.run(midihang, i, playnote, params:get("midi_channel_D"))
+    end
+    if params:get("seq_"..i.."_crow_1") == 2 then
+      crow.output[1].volts = (((playnote)-60)/12)
+      crow.output[2].execute()
+    end
+    if params:get("seq_"..i.."_crow_2") == 2 then
+      crow.output[3].volts = (((playnote)-60)/12)
+      crow.output[4].execute()
+    end
+    if params:get("seq_"..i.."_JF") == 2 then
+      crow.ii.jf.play_note(((playnote)-60)/12,5)
+    end
+    if params:get("seq_"..i.."_w") == 2 then
+      crow.send("ii.wsyn.play_note(".. ((playnote)-60)/12 ..", " .. params:get("wsyn_vel") .. ")")
     end
   end
 end
   
-function mollyhang(note,i)
+function eng_hang(note,i)
   clock.sleep(time.modes[params:get("time"..i)]/2)
+  --molly & the bangs
   engine.noteOff(note)
+  --uncomment below for mx.samples
+  --skeys:off({name=instruments[params:get("mx_ins")],midi=note})
 end
 
 function midihang(i, playnote, midi_ch)
