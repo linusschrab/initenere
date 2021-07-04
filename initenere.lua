@@ -49,9 +49,13 @@
 
 local music = require("musicutil")
 
+--ploysub
+local polysub = include 'we/lib/polysub'
+engine.name = "PolySub"
+
 --molly the poly
-local MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
-engine.name = "MollyThePoly"
+--local MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
+--engine.name = "MollyThePoly"
 
 --uncomment below for the bangs
 --thebangs = include('thebangs/lib/thebangs_engine')
@@ -413,8 +417,8 @@ function add_params()
   params:add_option("seq_4_oct", "s4. oct range +/-", oct_modes, 3)
 
   --molly  the poly
-  params:add_group("molly the poly", 46)
-  MollyThePoly.add_params()
+  --params:add_group("molly the poly", 46)
+  --MollyThePoly.add_params()
   --uncomment below for the bangs
   --params:add_group("the bangs", 6)
   --Thebangs.add_additional_synth_params()
@@ -423,6 +427,8 @@ function add_params()
   --skeys=mxsamples:new()
   --instruments = skeys:list_instruments()
   --params:add_option("mx_ins", "MX.INSTRUMENT", instruments, 1)
+  params:add_group("polysub", 19)
+  polysub.params()
   wsyn_add_params()
   params:bang()
   params:set("wsyn_init",1)
@@ -995,12 +1001,15 @@ function play(i)
   if momentary[13][2+i] ~= true then
     if params:get("seq_"..i.."_engine") == 2 then
       --molly the poly
-      engine.noteOn(playnote, music.note_num_to_freq(playnote),100)
-      clock.run(eng_hang, playnote,i)
+      --engine.noteOn(playnote, music.note_num_to_freq(playnote),100)
+      --clock.run(eng_hang, playnote,i)
       --uncomment below for the bangs
       --engine.hz(music.note_num_to_freq(playnote))
       --uncomment below for mx.samples
       --skeys:on({name=instruments[params:get("mx_ins")],midi=playnote,velocity=120})
+      --polysub
+      engine.start(i,music.note_num_to_freq(playnote))
+      clock.run(eng_hang, playnote, i)
     end
     if params:get("seq_"..i.."_midi_A") == 2 then
       m:note_on(playnote,100,params:get("midi_channel_A"))
@@ -1020,11 +1029,11 @@ function play(i)
     end
     if params:get("seq_"..i.."_crow_1") == 2 then
       crow.output[1].volts = (((playnote)-60)/12)
-      crow.output[2].execute()
+      crow.output[2]()
     end
     if params:get("seq_"..i.."_crow_2") == 2 then
       crow.output[3].volts = (((playnote)-60)/12)
-      crow.output[4].execute()
+      crow.output[4]()
     end
     if params:get("seq_"..i.."_JF") == 2 then
       crow.ii.jf.play_note(((playnote)-60)/12,5)
@@ -1038,9 +1047,11 @@ end
 function eng_hang(note,i)
   clock.sleep(time.modes[params:get("time"..i)]/2)
   --molly & the bangs
-  engine.noteOff(note)
+  --engine.noteOff(note)
   --uncomment below for mx.samples
   --skeys:off({name=instruments[params:get("mx_ins")],midi=note})
+  --polysub
+  engine.stop(i)
 end
 
 function midihang(i, playnote, midi_ch)
