@@ -50,7 +50,7 @@
 local music = require("musicutil")
 
 --ploysub
-local polysub = include 'we/lib/polysub'
+local polysub = require 'polysub'
 engine.name = "PolySub"
 
 --molly the poly
