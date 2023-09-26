@@ -1,6 +1,6 @@
 ## INITENERE
 
-![enter image description here](https://www.getgometro.com/wp-content/uploads/2017/01/traffic-congestion-sa-474927869.jpg)
+![enter image description here](https://miro.medium.com/v2/resize:fit:4800/format:webp/1*xDNv04fh-gBmoowj1xdq3g.jpeg)
 
 /// Confining spaces of random seeds. ///
 
